@@ -1,7 +1,7 @@
 package evm
 
 import (
-	"context"
+	"errors"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -18,10 +18,17 @@ type TxRequest struct {
 	Data     []byte          `json:"data"`
 }
 
-func (t *TxRequest) PrepareTransaction(ctx context.Context, client *Client) (*types.Transaction, error) {
+func (t *TxRequest) PrepareTransaction(client *Client) (*types.Transaction, error) {
+	if t.From == common.BytesToAddress([]byte{0}) {
+		return nil, errors.New("from address is required")
+	}
+	if t.To == nil {
+		return nil, errors.New("to address is required")
+	}
+
 	var err error
 	if t.GasLimit == 0 {
-		if t.GasLimit, err = client.EthClient.EstimateGas(ctx, ethereum.CallMsg{
+		if t.GasLimit, err = client.EthClient.EstimateGas(client.Ctx, ethereum.CallMsg{
 			From:      t.From,
 			To:        t.To,
 			GasPrice:  t.GasPrice,
@@ -39,7 +46,7 @@ func (t *TxRequest) PrepareTransaction(ctx context.Context, client *Client) (*ty
 		}
 	}
 	if t.GasPrice == nil {
-		if t.GasPrice, err = client.EthClient.SuggestGasPrice(ctx); err != nil {
+		if t.GasPrice, err = client.EthClient.SuggestGasPrice(client.Ctx); err != nil {
 			return nil, err
 		}
 	}

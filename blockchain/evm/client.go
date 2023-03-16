@@ -62,7 +62,7 @@ func (client *Client) LatestBlock(ctx context.Context) (uint64, error) {
 type SignFunc func(txHash []byte) ([]byte, error)
 
 func (client *Client) Transfer(txRequest *TxRequest, signFunc SignFunc) (*types.Transaction, error) {
-	tx, err := txRequest.PrepareTransaction(client.Ctx, client)
+	tx, err := txRequest.PrepareTransaction(client)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (client *Client) Transfer(txRequest *TxRequest, signFunc SignFunc) (*types.
 }
 
 func (client *Client) TransactContract(txRequest *TxRequest, signFunc SignFunc) (*types.Transaction, error) {
-	tx, err := txRequest.PrepareTransaction(client.Ctx, client)
+	tx, err := txRequest.PrepareTransaction(client)
 	if err != nil {
 		return nil, err
 	}

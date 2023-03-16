@@ -1,7 +1,6 @@
 package evm_test
 
 import (
-	"context"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/ethereum/go-ethereum/common"
@@ -86,29 +85,16 @@ func TestTransferNativeArbitrumGoerli(t *testing.T) {
 
 func TestTransferNative(t *testing.T) {
 	privateKey, pubkey := btcec.PrivKeyFromBytes(common.FromHex(privateKeyHex))
-	amount := new(big.Int).Exp(big.NewInt(10), big.NewInt(16), nil)
+	amount := new(big.Int).Exp(big.NewInt(10), big.NewInt(15), nil)
 	addressFromPubkey := evm.PubkeyToAddress(pubkey).Address
 	fmt.Println("addressFromPubkey", addressFromPubkey.Hex())
 	fmt.Println("amount", amount.String())
 
 	client := getClient(t)
-	accountNonce, err := client.AccountNonce(addressFromPubkey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println("accountNonce", accountNonce.String())
-	gasPrice, err := client.EthClient.SuggestGasPrice(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	to := common.HexToAddress(toAddress)
-	tx, err := client.Transfer(&evm.TxRequest{
-		From:     addressFromPubkey,
-		Nonce:    accountNonce,
-		To:       &to,
-		GasPrice: gasPrice,
-		Value:    amount,
-	}, func(txHash []byte) ([]byte, error) {
+	txBuilder := evm.NewTxBuilder(client.Ctx).SetFrom(addressFromPubkey).SetTo(common.HexToAddress(toAddress)).
+		SetValue(amount)
+
+	tx, err := client.Transfer(txBuilder.GetTxRequest(), func(txHash []byte) ([]byte, error) {
 		return crypto.Sign(txHash, privateKey.ToECDSA())
 	})
 	if err != nil {
@@ -126,23 +112,10 @@ func TestCallContract(t *testing.T) {
 	fmt.Println("addressFromPubkey", addressFromPubkey.Hex())
 
 	client := getClient(t)
-	accountNonce, err := client.AccountNonce(addressFromPubkey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println("accountNonce", accountNonce.String())
-	gasPrice, err := client.EthClient.SuggestGasPrice(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	to := common.HexToAddress(tokenAddress)
-	tx, err := client.TransactContract(&evm.TxRequest{
-		From:     addressFromPubkey,
-		Nonce:    accountNonce,
-		To:       &to,
-		GasPrice: gasPrice,
-		Data:     common.FromHex("0xa9059cbb00000000000000000000000001504761F5Ec308Fc0BAf3e705f31F2466535d9400000000000000000000000000000000000000000000000619ce65bcce760000"),
-	}, func(txHash []byte) ([]byte, error) {
+	txBuilder := evm.NewTxBuilder(client.Ctx).SetFrom(addressFromPubkey).SetTo(common.HexToAddress(toAddress)).
+		PrepareTransferToken(common.HexToAddress(tokenAddress), big.NewInt(1019400000000000000))
+
+	tx, err := client.TransactContract(txBuilder.GetTxRequest(), func(txHash []byte) ([]byte, error) {
 		return crypto.Sign(txHash, privateKey.ToECDSA())
 	})
 	if err != nil {
