@@ -54,10 +54,10 @@ func PubkeyToTaprootPubKey(pubkey *btcec.PublicKey, params *chaincfg.Params) (bt
 }
 
 type KeyAddresses struct {
-	Nested  string
-	Legacy  string
-	Segwit  string
-	Taproot string
+	Nested  string `json:"nested"`
+	Legacy  string `json:"legacy"`
+	Segwit  string `json:"segwit"`
+	Taproot string `json:"taproot"`
 }
 
 func PubkeyToAddresses(pubkey *btcec.PublicKey, params *chaincfg.Params) KeyAddresses {
