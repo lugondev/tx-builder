@@ -1,26 +1,16 @@
-package bitcoin_test
+package bitcoin
 
 import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/lugondev/tx-builder/blockchain/bitcoin"
 	"testing"
 )
 
 func TestGetAddressFromSeed(t *testing.T) {
-	//generateSeed, err := hdkeychain.GenerateSeed(hdkeychain.RecommendedSeedLen)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//mnemonic, err := bip39.NewMnemonic(generateSeed)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-	//t.Log("mnemonic: ", mnemonic)
 	mnemonic := "furnace diesel fault piano wrap surface focus saddle chuckle absent range exact"
-	addresses, err := bitcoin.GetAddressesFromSeed(mnemonic, &chaincfg.MainNetParams, 3)
+	addresses, err := GetAddressesFromSeed(mnemonic, &chaincfg.MainNetParams, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +35,7 @@ func TestGetAddressFromPrivateKey(t *testing.T) {
 	}
 	fmt.Println("private key: ", privKeyWif.String())
 
-	addresses, err := bitcoin.GetAddressFromPrivate(privateKey, &chaincfg.MainNetParams)
+	addresses, err := GetAddressFromPrivate(privateKey, &chaincfg.MainNetParams)
 	if err != nil {
 		t.Fatal(err)
 	}

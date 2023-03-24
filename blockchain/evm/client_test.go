@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lugondev/tx-builder/blockchain/evm"
+	"github.com/lugondev/tx-builder/pkg/hashicorp"
 	"math"
 	"math/big"
 	"testing"
@@ -96,6 +97,28 @@ func TestTransferNative(t *testing.T) {
 
 	tx, err := client.Transfer(txBuilder.GetTxRequest(), func(txHash []byte) ([]byte, error) {
 		return crypto.Sign(txHash, privateKey.ToECDSA())
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.SubmitTx(tx); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(tx.Hash().Hex())
+}
+func TestTransferNativeSignPlugin(t *testing.T) {
+	amount := new(big.Int).Exp(big.NewInt(9), big.NewInt(15), nil)
+	addressFromPubkey := common.HexToAddress("0x83a0254be47813BBff771F4562744676C4e793F0")
+	fmt.Println("addressFromPubkey", addressFromPubkey.Hex())
+	fmt.Println("amount", amount.String())
+
+	client := getClient(t)
+	txBuilder := evm.NewTxBuilder(client.Ctx).SetFrom(addressFromPubkey).SetTo(common.HexToAddress(toAddress)).
+		SetValue(amount)
+
+	tx, err := client.Transfer(txBuilder.GetTxRequest(), func(txHash []byte) ([]byte, error) {
+		return hashicorp.SignTest(txHash)
 	})
 	if err != nil {
 		t.Fatal(err)
