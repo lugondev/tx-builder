@@ -65,7 +65,7 @@ func (b *MemPoolResponse) ToUTXOs() *UnspentTxsOutput {
 }
 
 func (s *MemPoolSpaceService) SetAddress(address string) *MemPoolSpaceService {
-	addressInfo := common.GetBTCAddressType(address)
+	addressInfo := common.GetBTCAddressInfo(address)
 	s.addressInfo = addressInfo
 	return s
 }

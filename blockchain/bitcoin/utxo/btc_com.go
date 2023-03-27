@@ -10,7 +10,7 @@ import (
 )
 
 type BTCComService struct {
-	c       *client.Client
+	Client  *client.Client
 	address string
 }
 
@@ -45,7 +45,7 @@ func (s *BTCComService) Do(ctx context.Context, opts ...client.RequestOption) (r
 		SecType:  client.SecTypeNone,
 	}
 
-	data, err := s.c.CallAPI(ctx, r, opts...)
+	data, err := s.Client.CallAPI(ctx, r, opts...)
 	if err != nil {
 		return res, err
 	}
@@ -71,7 +71,7 @@ func (b *BTCComResponse) ToUTXOs() *UnspentTxsOutput {
 }
 
 func (s *BTCComService) SetAddress(address string) *BTCComService {
-	addressInfo := common.GetBTCAddressType(address)
+	addressInfo := common.GetBTCAddressInfo(address)
 	if addressInfo == nil || addressInfo.Chain != common.BTCMainnet {
 		s.address = ""
 	} else {

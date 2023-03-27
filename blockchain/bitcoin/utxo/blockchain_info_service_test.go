@@ -8,7 +8,7 @@ import (
 
 func TestCallToBlcInfo(t *testing.T) {
 	client := client.NewClient("https://blockchain.info", "", "", "")
-	utxoService := BlockChainInfoService{c: client}
+	utxoService := BlockChainInfoService{Client: client}
 	utxo, err := utxoService.SetAddress("3QS5z2ei7sPTUmonW88ZZAfjWXYzVtFsBF").Do(context.Background())
 	if err != nil {
 		t.Fatal(err)

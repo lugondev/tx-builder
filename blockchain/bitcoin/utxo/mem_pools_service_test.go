@@ -8,7 +8,7 @@ import (
 
 func TestCallToMemPoolSpace(t *testing.T) {
 	client := client.NewClient("https://mempool.space", "", "", "")
-	utxoService := MemPoolSpaceService{c: client}
+	utxoService := MemPoolSpaceService{Client: client}
 	utxo, err := utxoService.SetAddress("tb1q5rvwj5fyh02ldstdk77ku0vc3g9utdq693tuet").Do(context.Background())
 	if err != nil {
 		t.Fatal(err)

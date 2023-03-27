@@ -10,7 +10,7 @@ import (
 )
 
 type MemPoolSpaceService struct {
-	c           *client.Client
+	Client      *client.Client
 	addressInfo *common.BTCAddressInfo
 }
 
@@ -39,7 +39,7 @@ func (s *MemPoolSpaceService) Do(ctx context.Context, opts ...client.RequestOpti
 		SecType:  client.SecTypeNone,
 	}
 
-	data, err := s.c.CallAPI(ctx, r, opts...)
+	data, err := s.Client.CallAPI(ctx, r, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (b *MemPoolResponse) ToUTXOs() *UnspentTxsOutput {
 }
 
 func (s *MemPoolSpaceService) SetAddress(address string) *MemPoolSpaceService {
-	addressInfo := common.GetBTCAddressType(address)
+	addressInfo := common.GetBTCAddressInfo(address)
 	s.addressInfo = addressInfo
 	return s
 }

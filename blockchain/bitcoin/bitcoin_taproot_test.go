@@ -14,6 +14,7 @@ import (
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"testing"
 )
 
@@ -21,9 +22,9 @@ func TestTaproot(t *testing.T) {
 	rawTx, err := CreateTaprootTx(
 		"eea6db960d8537f33c922aa13ff3442f2cfa1e97a01023b2448b3af759c6833d",
 		destinationAddress,
-		Utxo{
-			Idx:  1,
-			TxId: "111984ad61cc14f24f157de1ba8ccf9a38af68914f786983bf7bd96e38a60159",
+		utxo.UnspentTxOutput{
+			VOut:   1,
+			TxHash: "111984ad61cc14f24f157de1ba8ccf9a38af68914f786983bf7bd96e38a60159",
 		},
 		1000)
 
@@ -34,7 +35,7 @@ func TestTaproot(t *testing.T) {
 	fmt.Println("raw signed transaction is: ", rawTx)
 }
 
-func CreateTaprootTx(privKey string, destination string, utxo Utxo, amount int64) (string, error) {
+func CreateTaprootTx(privKey string, destination string, utxo utxo.UnspentTxOutput, amount int64) (string, error) {
 
 	privateKey, pubKey := btcec.PrivKeyFromBytes(common.FromHex(privKey))
 
@@ -59,12 +60,12 @@ func CreateTaprootTx(privKey string, destination string, utxo Utxo, amount int64
 	}
 
 	redeemTx := wire.NewMsgTx(wire.TxVersion)
-	utxoHash, err := chainhash.NewHashFromStr(utxo.TxId)
+	utxoHash, err := chainhash.NewHashFromStr(utxo.TxHash)
 	if err != nil {
 		return "", err
 	}
 
-	outPoint := wire.NewOutPoint(utxoHash, utxo.Idx)
+	outPoint := wire.NewOutPoint(utxoHash, uint32(utxo.VOut))
 
 	// making the input, and adding it to transaction
 	txIn := wire.NewTxIn(outPoint, nil, nil)

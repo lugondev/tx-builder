@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"testing"
 )
 
@@ -21,20 +22,15 @@ func GetPayToAddrScript(address string) []byte {
 	return rcvScript
 }
 
-type Utxo struct {
-	Idx  uint32
-	TxId string
-}
-
 func TestCC(t *testing.T) {
 	rawTx, err := CreateTx(
 		"cVojzAq1juw95rKh8khRVSLAdwJe2Z2CwP8t9tvWbQ9zKM8jNcXB",
 		destinationAddress,
-		Utxo{
-			Idx:  0,
-			TxId: "57739a1d6f8964443f38892ef94daaa95d53008fa7c70fe6e8e899a4dfe76538",
+		utxo.UnspentTxOutput{
+			VOut:   0,
+			TxHash: "8bcb0a72620a7f55483c7cca7bf57d0c226474299c95825cb60da292bececa50",
 		},
-		1000)
+		1111)
 
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +39,7 @@ func TestCC(t *testing.T) {
 	fmt.Println("raw signed transaction is: ", rawTx)
 }
 
-func CreateTx(privKey string, destination string, utxo Utxo, amount int64) (string, error) {
+func CreateTx(privKey string, destination string, utxo utxo.UnspentTxOutput, amount int64) (string, error) {
 
 	wif, err := btcutil.DecodeWIF(privKey)
 	if err != nil {
@@ -83,7 +79,7 @@ func CreateTx(privKey string, destination string, utxo Utxo, amount int64) (stri
 	// in next steps, sections will be field and pass to sign
 	redeemTx := wire.NewMsgTx(wire.TxVersion)
 
-	utxoHash, err := chainhash.NewHashFromStr(utxo.TxId)
+	utxoHash, err := chainhash.NewHashFromStr(utxo.TxHash)
 	if err != nil {
 		return "", err
 	}
@@ -91,7 +87,7 @@ func CreateTx(privKey string, destination string, utxo Utxo, amount int64) (stri
 	// the second argument is vout or Tx-index, which is the index
 	// of spending UTXO in the transaction that TxId referred to
 	// in this case is 1, but can vary different numbers
-	outPoint := wire.NewOutPoint(utxoHash, utxo.Idx)
+	outPoint := wire.NewOutPoint(utxoHash, uint32(utxo.VOut))
 
 	// making the input, and adding it to transaction
 	txIn := wire.NewTxIn(outPoint, nil, nil)
@@ -113,7 +109,6 @@ func CreateTx(privKey string, destination string, utxo Utxo, amount int64) (stri
 }
 
 func SignTx(wif *btcutil.WIF, sourceScript []byte, redeemTx *wire.MsgTx) (string, error) {
-	fmt.Println("SerializePubKey: ", hexutil.Encode(sourceScript))
 	// since there is only one input in our transaction
 	// we use 0 as second argument, if the transaction
 	// has more args, should pass related index
@@ -129,6 +124,6 @@ func SignTx(wif *btcutil.WIF, sourceScript []byte, redeemTx *wire.MsgTx) (string
 	}
 
 	hexSignedTx := hex.EncodeToString(signedTx.Bytes())
-
+	fmt.Println("hexSignedTx: ", len(signedTx.Bytes()))
 	return hexSignedTx, nil
 }

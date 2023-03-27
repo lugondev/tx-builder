@@ -25,6 +25,8 @@ func SignerFunc(chainID *big.Int, signFunc SignFunc) func(common.Address, *types
 			return nil, errors.New("wrong signature length")
 		}
 
+		//for _, rec
+
 		for j := 0; j < 2; j++ {
 			signedTxn, err := txn.WithSignature(signer, sig)
 

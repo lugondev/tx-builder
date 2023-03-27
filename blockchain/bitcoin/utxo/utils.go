@@ -14,6 +14,9 @@ type UnspentTxsOutput []*UnspentTxOutput
 func (u *UnspentTxsOutput) ToUTXOsJSON() ([]byte, error) {
 	return json.Marshal(u)
 }
+func (u *UnspentTxsOutput) Len() int {
+	return len(*u)
+}
 
 func (u *UnspentTxsOutput) ForceToUTXOsJSON() []byte {
 	bytes, err := json.Marshal(u)

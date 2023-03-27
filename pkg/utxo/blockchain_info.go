@@ -67,7 +67,7 @@ func (b *BlockchainInfoResponse) ToUTXOs() *UnspentTxsOutput {
 }
 
 func (s *BlockChainInfoService) SetAddress(address string) *BlockChainInfoService {
-	addressInfo := common.GetBTCAddressType(address)
+	addressInfo := common.GetBTCAddressInfo(address)
 	if addressInfo == nil || addressInfo.Chain != common.BTCMainnet {
 		s.address = ""
 	} else {

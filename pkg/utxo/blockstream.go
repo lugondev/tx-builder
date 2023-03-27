@@ -64,7 +64,7 @@ func (b *BlockStreamResponse) ToUTXOs() *UnspentTxsOutput {
 }
 
 func (s *BlockStreamService) SetAddress(address string) *BlockStreamService {
-	addressInfo := common.GetBTCAddressType(address)
+	addressInfo := common.GetBTCAddressInfo(address)
 	s.addressInfo = addressInfo
 	return s
 }

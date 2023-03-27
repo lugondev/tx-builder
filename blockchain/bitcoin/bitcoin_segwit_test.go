@@ -11,6 +11,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"testing"
 )
 
@@ -18,9 +19,9 @@ func TestSegwit(t *testing.T) {
 	rawTx, err := CreateSegwitTx(
 		"cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr",
 		"tb1pr375lf8f88dzkxhhecpqarp9w5580eysuycu40czz8s2phd86gss9rwnaf",
-		Utxo{
-			Idx:  1,
-			TxId: "34287f892662f88f68cadb4b29d51e3dcdd4241eee0f668fd254120316ba2e9c",
+		utxo.UnspentTxOutput{
+			VOut:   1,
+			TxHash: "34287f892662f88f68cadb4b29d51e3dcdd4241eee0f668fd254120316ba2e9c",
 		},
 		10000)
 
@@ -31,7 +32,7 @@ func TestSegwit(t *testing.T) {
 	fmt.Println("raw signed transaction is: ", rawTx)
 }
 
-func CreateSegwitTx(privKey string, destination string, utxo Utxo, amount int64) (string, error) {
+func CreateSegwitTx(privKey string, destination string, utxo utxo.UnspentTxOutput, amount int64) (string, error) {
 	wif, err := btcutil.DecodeWIF(privKey)
 	if err != nil {
 		return "", err
@@ -58,12 +59,12 @@ func CreateSegwitTx(privKey string, destination string, utxo Utxo, amount int64)
 	}
 
 	redeemTx := wire.NewMsgTx(wire.TxVersion)
-	utxoHash, err := chainhash.NewHashFromStr(utxo.TxId)
+	utxoHash, err := chainhash.NewHashFromStr(utxo.TxHash)
 	if err != nil {
 		return "", err
 	}
 
-	outPoint := wire.NewOutPoint(utxoHash, utxo.Idx)
+	outPoint := wire.NewOutPoint(utxoHash, uint32(utxo.VOut))
 
 	// making the input, and adding it to transaction
 	txIn := wire.NewTxIn(outPoint, nil, nil)

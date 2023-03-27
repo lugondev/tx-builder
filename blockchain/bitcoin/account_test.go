@@ -5,6 +5,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/lugondev/tx-builder/pkg/common"
 	"testing"
 )
 
@@ -16,15 +17,15 @@ func TestGetAddressFromSeed(t *testing.T) {
 	}
 	for i := 0; i < len(addresses); i++ {
 		pubkeyToAddress := addresses[i]
-		fmt.Println("taproot address: ", pubkeyToAddress.Taproot)
-		fmt.Println("legacy address: ", pubkeyToAddress.Legacy)
-		fmt.Println("nested address: ", pubkeyToAddress.Nested)
-		fmt.Println("segwit address: ", pubkeyToAddress.Segwit)
+		fmt.Println("taproot address: ", pubkeyToAddress[common.Taproot])
+		fmt.Println("legacy address: ", pubkeyToAddress[common.Legacy])
+		fmt.Println("nested address: ", pubkeyToAddress[common.Nested])
+		fmt.Println("segwit address: ", pubkeyToAddress[common.Segwit])
 		fmt.Println("========================")
 	}
 }
 
-func TestGetAddressFromPrivateKey(t *testing.T) {
+func TestGetAddressFromGeneratedPrivateKey(t *testing.T) {
 	privateKey, err := btcec.NewPrivateKey()
 	if err != nil {
 		t.Fatal(err)
@@ -35,13 +36,36 @@ func TestGetAddressFromPrivateKey(t *testing.T) {
 	}
 	fmt.Println("private key: ", privKeyWif.String())
 
-	addresses, err := GetAddressFromPrivate(privateKey, &chaincfg.MainNetParams)
+	privateKeyToAddresses(t, privateKey)
+}
+func TestGetAddressFromPrivateKey(t *testing.T) {
+	wif, err := btcutil.DecodeWIF("cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("private key: ", wif.String())
+
+	privateKeyToAddresses(t, wif.PrivKey)
+}
+
+func privateKeyToAddresses(t *testing.T, privKey *btcec.PrivateKey) {
+	addressesTestnet3, err := GetAddressFromPrivate(privKey, &chaincfg.TestNet3Params)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fmt.Println("taproot address: ", addresses.Taproot)
-	fmt.Println("legacy address: ", addresses.Legacy)
-	fmt.Println("nested address: ", addresses.Nested)
-	fmt.Println("segwit address: ", addresses.Segwit)
+	fmt.Println("taproot testnet3: ", (*addressesTestnet3)[common.Taproot])
+	fmt.Println("legacy testnet3: ", (*addressesTestnet3)[common.Legacy])
+	fmt.Println("nested testnet3: ", (*addressesTestnet3)[common.Nested])
+	fmt.Println("segwit testnet3: ", (*addressesTestnet3)[common.Segwit])
+
+	addressesMainnet, err := GetAddressFromPrivate(privKey, &chaincfg.MainNetParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("taproot mainnet: ", (*addressesMainnet)[common.Taproot])
+	fmt.Println("legacy mainnet: ", (*addressesMainnet)[common.Legacy])
+	fmt.Println("nested mainnet: ", (*addressesMainnet)[common.Nested])
+	fmt.Println("segwit mainnet: ", (*addressesMainnet)[common.Segwit])
 }

@@ -109,7 +109,7 @@ func TestTransferNative(t *testing.T) {
 }
 func TestTransferNativeSignPlugin(t *testing.T) {
 	amount := new(big.Int).Exp(big.NewInt(9), big.NewInt(15), nil)
-	addressFromPubkey := common.HexToAddress("0x83a0254be47813BBff771F4562744676C4e793F0")
+	addressFromPubkey := common.HexToAddress("0x140c689fd967f0f3ce5ffee7cc7096a16f76f01f")
 	fmt.Println("addressFromPubkey", addressFromPubkey.Hex())
 	fmt.Println("amount", amount.String())
 
@@ -118,7 +118,7 @@ func TestTransferNativeSignPlugin(t *testing.T) {
 		SetValue(amount)
 
 	tx, err := client.Transfer(txBuilder.GetTxRequest(), func(txHash []byte) ([]byte, error) {
-		return hashicorp.SignTest(txHash)
+		return hashicorp.SignByKeyManager(txHash)
 	})
 	if err != nil {
 		t.Fatal(err)

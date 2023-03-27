@@ -10,7 +10,7 @@ import (
 )
 
 type BlockStreamService struct {
-	c           *client.Client
+	Client      *client.Client
 	addressInfo *common.BTCAddressInfo
 }
 
@@ -40,7 +40,7 @@ func (s *BlockStreamService) Do(ctx context.Context, opts ...client.RequestOptio
 		SecType:  client.SecTypeNone,
 	}
 
-	data, err := s.c.CallAPI(ctx, r, opts...)
+	data, err := s.Client.CallAPI(ctx, r, opts...)
 	if err != nil {
 		return res, err
 	}
@@ -64,7 +64,7 @@ func (b *BlockStreamResponse) ToUTXOs() *UnspentTxsOutput {
 }
 
 func (s *BlockStreamService) SetAddress(address string) *BlockStreamService {
-	addressInfo := common.GetBTCAddressType(address)
+	addressInfo := common.GetBTCAddressInfo(address)
 	s.addressInfo = addressInfo
 	return s
 }

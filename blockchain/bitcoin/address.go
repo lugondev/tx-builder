@@ -6,6 +6,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/lugondev/tx-builder/pkg/common"
 )
 
 const compressed = true
@@ -53,19 +54,14 @@ func PubkeyToTaprootPubKey(pubkey *btcec.PublicKey, params *chaincfg.Params) (bt
 	return btcutil.NewAddressTaproot(schnorr.SerializePubKey(tapKey), params)
 }
 
-type KeyAddresses struct {
-	Nested  string `json:"nested"`
-	Legacy  string `json:"legacy"`
-	Segwit  string `json:"segwit"`
-	Taproot string `json:"taproot"`
-}
+type KeyAddresses map[common.BTCAddressType]string
 
 func PubkeyToAddresses(pubkey *btcec.PublicKey, params *chaincfg.Params) KeyAddresses {
 	return KeyAddresses{
-		Nested:  must(PubkeyToScriptHash(pubkey, params)).EncodeAddress(),
-		Legacy:  must(PubkeyToPubKeyHash(pubkey, params)).EncodeAddress(),
-		Segwit:  must(PubkeyToSegwit(pubkey, params)).EncodeAddress(),
-		Taproot: must(PubkeyToTaprootPubKey(pubkey, params)).EncodeAddress(),
+		common.Nested:  must(PubkeyToScriptHash(pubkey, params)).EncodeAddress(),
+		common.Legacy:  must(PubkeyToPubKeyHash(pubkey, params)).EncodeAddress(),
+		common.Segwit:  must(PubkeyToSegwit(pubkey, params)).EncodeAddress(),
+		common.Taproot: must(PubkeyToTaprootPubKey(pubkey, params)).EncodeAddress(),
 	}
 }
 
