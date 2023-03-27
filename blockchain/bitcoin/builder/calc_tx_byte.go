@@ -29,7 +29,7 @@ func getSizeOfScriptLengthElement(length float64) float64 {
 	} else if length <= 4294967295 {
 		return 5
 	} else {
-		panic("Invalid script length element")
+		panic("Invalid fromScript length element")
 	}
 }
 

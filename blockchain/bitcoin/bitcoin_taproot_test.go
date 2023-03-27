@@ -14,6 +14,7 @@ import (
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/author"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"testing"
 )
@@ -93,8 +94,8 @@ func CreateTaprootTx(privKey string, destination string, utxo utxo.UnspentTxOutp
 func SignTaprootTx(wif *btcutil.WIF, addrPubKey *btcutil.AddressTaproot, redeemTx *wire.MsgTx) (string, error) {
 	sourceScript := GetPayToAddrScript(addrPubKey.EncodeAddress())
 
-	secretStore := NewMemorySecretStore(map[string]*btcutil.WIF{
-		addrPubKey.EncodeAddress(): wif,
+	secretStore := author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
+		addrPubKey.EncodeAddress(): wif.PrivKey,
 	}, &chaincfg.TestNet3Params)
 	if err := txauthor.AddAllInputScripts(redeemTx, [][]byte{sourceScript}, []btcutil.Amount{7600}, secretStore); err != nil {
 		return "", nil

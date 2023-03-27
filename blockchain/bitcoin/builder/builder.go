@@ -1,13 +1,12 @@
 package builder
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
@@ -20,12 +19,13 @@ type TxBtc struct {
 	privKey *btcec.PrivateKey
 
 	FromAddressInfo *common.BTCAddressInfo
-	addressType     common.BTCAddressType
-	script          []byte
+	fromAddressType common.BTCAddressType
+	fromScript      []byte
 	chainCfg        *chaincfg.Params
 
-	utxos   []*utxo.UnspentTxOutput
-	outputs []Output
+	utxos        []*utxo.UnspentTxOutput
+	outputs      []Output
+	amountsInput []btcutil.Amount
 
 	TxBytes         int64
 	FeeRate         int64
@@ -41,8 +41,8 @@ type Output struct {
 
 func NewTxBtcBuilder(addressType common.BTCAddressType, chainCfg *chaincfg.Params) (*TxBtc, error) {
 	return &TxBtc{
-		addressType: addressType,
-		chainCfg:    chainCfg,
+		fromAddressType: addressType,
+		chainCfg:        chainCfg,
 	}, nil
 }
 
@@ -50,7 +50,7 @@ func (t *TxBtc) SetPrivKey(privKey *btcec.PrivateKey) *TxBtc {
 	t.privKey = privKey
 	t.pubkey = privKey.PubKey()
 	addresses := bitcoin.PubkeyToAddresses(t.pubkey, t.chainCfg)
-	t.FromAddressInfo = common.GetBTCAddressInfo(addresses[t.addressType])
+	t.FromAddressInfo = common.GetBTCAddressInfo(addresses[t.fromAddressType])
 
 	return t
 }
@@ -62,9 +62,10 @@ func (t *TxBtc) SetPubkey(pubkey []byte) *TxBtc {
 		return nil
 	}
 	t.pubkey = pubKey
+
 	addresses := bitcoin.PubkeyToAddresses(pubKey, t.chainCfg)
-	t.FromAddressInfo = common.GetBTCAddressInfo(addresses[t.addressType])
-	t.script = t.FromAddressInfo.GetPayToAddrScript()
+	t.FromAddressInfo = common.GetBTCAddressInfo(addresses[t.fromAddressType])
+	t.fromScript = t.FromAddressInfo.GetPayToAddrScript()
 
 	return t
 }
@@ -76,7 +77,7 @@ func (t *TxBtc) GetPubKey() *btcec.PublicKey {
 func (t *TxBtc) SetOutputs(outputs []Output) *TxBtc {
 	for i := range outputs {
 		info := common.GetBTCAddressInfo(outputs[i].Address)
-		if info == nil || info.Type != t.addressType || info.GetChainConfig().Net != t.chainCfg.Net {
+		if info == nil || info.GetChainConfig().Net != t.chainCfg.Net {
 			fmt.Println("address type or chain config not match")
 			return nil
 		}
@@ -104,8 +105,10 @@ func (t *TxBtc) CalcFee() int64 {
 
 func (t *TxBtc) SetUtxos(utxos []*utxo.UnspentTxOutput) *TxBtc {
 	t.utxos = utxos
+	t.amountsInput = make([]btcutil.Amount, len(utxos))
 	for i := range utxos {
 		t.EstimateBalance += utxos[i].Value
+		t.amountsInput[i] = btcutil.Amount(utxos[i].Value)
 	}
 	return t
 }
@@ -147,24 +150,4 @@ func (t *TxBtc) LegacyTx() ([]byte, error) {
 	finalRawTx, err := t.signLegacyTx(redeemTx)
 
 	return finalRawTx, err
-}
-
-func (t *TxBtc) signLegacyTx(redeemTx *wire.MsgTx) ([]byte, error) {
-	if t.utxos == nil || len(t.utxos) == 0 {
-		return nil, errors.New("utxos is empty")
-	}
-	for i := range t.utxos {
-		signature, err := txscript.SignatureScript(redeemTx, i, t.FromAddressInfo.GetPayToAddrScript(), txscript.SigHashAll, t.privKey, true)
-		if err != nil {
-			return nil, err
-		}
-		redeemTx.TxIn[i].SignatureScript = signature
-	}
-
-	var signedTx bytes.Buffer
-	if err := redeemTx.Serialize(&signedTx); err != nil {
-		return nil, err
-	}
-
-	return signedTx.Bytes(), nil
 }

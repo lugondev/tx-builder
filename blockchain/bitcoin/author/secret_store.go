@@ -1,4 +1,4 @@
-package bitcoin
+package author
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 
 var _ txauthor.SecretsSource = (*MemorySecretStore)(nil)
 
-func NewMemorySecretStore(keyMap map[string]*btcutil.WIF, params *chaincfg.Params) MemorySecretStore {
+func NewMemorySecretStore(keyMap map[string]*btcec.PrivateKey, params *chaincfg.Params) MemorySecretStore {
 	return MemorySecretStore{
 		keyMap: keyMap,
 		params: params,
@@ -19,16 +19,16 @@ func NewMemorySecretStore(keyMap map[string]*btcutil.WIF, params *chaincfg.Param
 }
 
 type MemorySecretStore struct {
-	keyMap map[string]*btcutil.WIF
+	keyMap map[string]*btcec.PrivateKey
 	params *chaincfg.Params
 }
 
 func (m MemorySecretStore) GetKey(address btcutil.Address) (*btcec.PrivateKey, bool, error) {
-	wif, found := m.keyMap[address.EncodeAddress()]
+	privKey, found := m.keyMap[address.EncodeAddress()]
 	if !found {
 		return nil, false, fmt.Errorf("address not found")
 	}
-	return wif.PrivKey, wif.CompressPubKey, nil
+	return privKey, true, nil
 }
 
 func (m MemorySecretStore) GetScript(address btcutil.Address) ([]byte, error) {

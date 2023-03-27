@@ -13,14 +13,14 @@ import (
 	"testing"
 )
 
-// const privKey = "cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr"
-const privKey = "cPeGCNhoftdg88EQgyrkdDVPe58d8MKfUHiyzz9eFEyKLxwxLXWb"
-const toAddress = "mvBSG1p12WE14xnATXSa43wd8TppUzKwha"
+const privKey = "cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr"
+
+// const privKey = "cPeGCNhoftdg88EQgyrkdDVPe58d8MKfUHiyzz9eFEyKLxwxLXWb"
+const toAddress = "tb1q5rvwj5fyh02ldstdk77ku0vc3g9utdq693tuet"
 
 func TestGetBalance(t *testing.T) {
-
-	client := client.NewClient("https://blockstream.info", "", "", "")
-	utxoService := utxo.BlockStreamService{Client: client}
+	c := client.NewClient("https://blockstream.info", "", "", "")
+	utxoService := utxo.BlockStreamService{Client: c}
 	utxos, err := utxoService.SetAddress(toAddress).
 		Do(context.Background())
 	if err != nil {
@@ -45,30 +45,29 @@ func TestBuilder(t *testing.T) {
 	fromAddressInfo := common.GetBTCAddressInfo(btcAddresses[common.Legacy])
 	fmt.Println("address legacy: ", fromAddressInfo.Address)
 
-	client := client.NewClient("https://blockstream.info", "", "", "")
-	utxoService := utxo.BlockStreamService{Client: client}
+	c := client.NewClient("https://blockstream.info", "", "", "")
+	utxoService := utxo.BlockStreamService{Client: c}
 	utxos, err := utxoService.SetAddress(fromAddressInfo.Address).
 		Do(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fmt.Println("UTXOs: ", utxos.ToUTXOs().Len(), string(utxos.ToUTXOs().ForceToUTXOsJSON()))
+	fmt.Println("UTXOs: ", utxos.ToUTXOs().Len())
 
 	// Create a new transaction builder
 	builder, err := NewTxBtcBuilder(common.Legacy, &chaincfg.TestNet3Params)
 	if err != nil {
 		t.Fatal(err)
 	}
-	builder.SetUtxos(*utxos.ToUTXOs())
 
 	txBytes := CalculateTxBytes(fromAddressInfo.Address, float64(utxos.ToUTXOs().Len()), []string{toAddress, fromAddressInfo.Address})
-	fmt.Println("txBytes: ", txBytes)
 
 	amount := int64(1231)
 	finalizedTx, err := builder.SetPrivKey(wif.PrivKey).
 		SetFeeRate(1).
 		SetTxBytes(txBytes).
+		SetUtxos(*utxos.ToUTXOs()).
 		SetOutputs([]Output{
 			{
 				Amount:  amount,
@@ -80,6 +79,7 @@ func TestBuilder(t *testing.T) {
 			},
 		}).
 		LegacyTx()
+
 	if err != nil {
 		t.Fatal(err)
 	}
