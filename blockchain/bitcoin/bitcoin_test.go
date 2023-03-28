@@ -9,18 +9,12 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
+	"github.com/lugondev/tx-builder/pkg/common"
 	"testing"
 )
 
 const destinationAddress = "mkF4Rkh9bQoUujuk5zJnvcamXvTpUgSNss"
-
-func GetPayToAddrScript(address string) []byte {
-	rcvAddress, _ := btcutil.DecodeAddress(address, &chaincfg.TestNet3Params)
-	rcvScript, _ := txscript.PayToAddrScript(rcvAddress)
-	return rcvScript
-}
 
 func TestCC(t *testing.T) {
 	rawTx, err := CreateTx(
@@ -48,10 +42,13 @@ func CreateTx(privKey string, destination string, utxo utxo.UnspentTxOutput, amo
 
 	// use TestNet3Params for interacting with bitcoin testnet
 	// if we want to interact with main net should use MainNetParams
-	addrPubKey, err := btcutil.NewAddressPubKeyHash(btcutil.Hash160(wif.SerializePubKey()), &chaincfg.TestNet3Params)
-	if err != nil {
-		return "", err
-	}
+	//addrPubKey, err := btcutil.NewAddressPubKeyHash(btcutil.Hash160(wif.SerializePubKey()), &chaincfg.TestNet3Params)
+	//if err != nil {
+	//	return "", err
+	//}
+
+	btcAddresses := PubkeyToAddresses(wif.PrivKey.PubKey(), &chaincfg.TestNet3Params)
+	fromAddressInfo := common.GetBTCAddressInfo(btcAddresses[common.Segwit])
 
 	/*
 	 * 1 or unit-amount in Bitcoin is equal to 1 satoshi and 1 Bitcoin = 100000000 satoshi
@@ -96,14 +93,14 @@ func CreateTx(privKey string, destination string, utxo utxo.UnspentTxOutput, amo
 	// adding the destination address and the amount to
 	// the transaction as output
 	redeemTxOut := wire.NewTxOut(amount, destinationAddrByte)
-	fmt.Println("GetPayToAddrScript: ", hexutil.Encode(GetPayToAddrScript(addrPubKey.EncodeAddress())))
-	redeemTxOut1 := wire.NewTxOut(8600, GetPayToAddrScript(addrPubKey.EncodeAddress()))
+	//fmt.Println("GetPayToAddrScript: ", hexutil.Encode(GetPayToAddrScript(addrPubKey.EncodeAddress())))
+	redeemTxOut1 := wire.NewTxOut(8600, fromAddressInfo.GetPayToAddrScript())
 
 	redeemTx.AddTxOut(redeemTxOut)
 	redeemTx.AddTxOut(redeemTxOut1)
 
 	// now sign the transaction
-	finalRawTx, err := SignTx(wif, GetPayToAddrScript(addrPubKey.EncodeAddress()), redeemTx)
+	finalRawTx, err := SignTx(wif, fromAddressInfo.GetPayToAddrScript(), redeemTx)
 
 	return finalRawTx, err
 }

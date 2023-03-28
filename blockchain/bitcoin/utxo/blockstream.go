@@ -63,6 +63,18 @@ func (b *BlockStreamResponse) ToUTXOs() *UnspentTxsOutput {
 	return &txs
 }
 
+func (b *BlockStreamResponse) ToUTXOsArray() []*UnspentTxOutput {
+	txs := make(UnspentTxsOutput, 0)
+	for _, tx := range *b {
+		txs = append(txs, &UnspentTxOutput{
+			TxHash: tx.TxId,
+			Value:  int64(tx.Value),
+			VOut:   tx.VOut,
+		})
+	}
+	return txs
+}
+
 func (s *BlockStreamService) SetAddress(address string) *BlockStreamService {
 	addressInfo := common.GetBTCAddressInfo(address)
 	s.addressInfo = addressInfo

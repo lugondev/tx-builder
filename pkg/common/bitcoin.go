@@ -85,7 +85,14 @@ func (b *BTCAddressInfo) GetBTCRouterCryptoAPIs() (router string) {
 }
 
 func (b *BTCAddressInfo) GetPayToAddrScript() []byte {
-	rcvAddress, _ := btcutil.DecodeAddress(b.Address, b.GetChainConfig())
-	rcvScript, _ := txscript.PayToAddrScript(rcvAddress)
+	rcvAddress, err := btcutil.DecodeAddress(b.Address, b.GetChainConfig())
+	if err != nil {
+		return nil
+	}
+	rcvScript, err := txscript.PayToAddrScript(rcvAddress)
+	if err != nil {
+		return nil
+	}
+
 	return rcvScript
 }

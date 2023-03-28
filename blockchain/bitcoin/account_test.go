@@ -5,13 +5,14 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/lugondev/tx-builder/pkg/common"
 	"testing"
 )
 
 func TestGetAddressFromSeed(t *testing.T) {
 	mnemonic := "furnace diesel fault piano wrap surface focus saddle chuckle absent range exact"
-	addresses, err := GetAddressesFromSeed(mnemonic, &chaincfg.MainNetParams, 3)
+	addresses, err := GetAddressesFromSeed(mnemonic, &chaincfg.TestNet3Params, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,8 +39,21 @@ func TestGetAddressFromGeneratedPrivateKey(t *testing.T) {
 
 	privateKeyToAddresses(t, privateKey)
 }
+
+func TestGetWifFromPrivateKey(t *testing.T) {
+	privateKey, _ := btcec.PrivKeyFromBytes(common2.FromHex("eea6db960d8537f33c922aa13ff3442f2cfa1e97a01023b2448b3af759c6833d"))
+	wif, err := btcutil.NewWIF(privateKey, &chaincfg.TestNet3Params, true)
+	if err != nil {
+		return
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("wif code: ", wif.String())
+}
+
 func TestGetAddressFromPrivateKey(t *testing.T) {
-	wif, err := btcutil.DecodeWIF("cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr")
+	wif, err := btcutil.DecodeWIF("cVacJiScoPMAugWKRwMU2HVUPE4PhcJLgxVCexieWEWcTiYC8bSn")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,9 +10,9 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/author"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
+	"github.com/lugondev/tx-builder/pkg/common"
 	"testing"
 )
 
@@ -22,7 +22,7 @@ func TestSegwit(t *testing.T) {
 		"mvBSG1p12WE14xnATXSa43wd8TppUzKwha",
 		utxo.UnspentTxOutput{
 			VOut:   1,
-			TxHash: "4a2723a32169baab6d0bf9030d56dd156a7396883cdc37067ea2caa238a17a52",
+			TxHash: "b0f37aa5f4fdf30ad8c3ab17498c8d97ac3b754a924de2f8fe5a3e3203542f94",
 		},
 		1000)
 
@@ -39,13 +39,8 @@ func CreateSegwitTx(privKey string, destination string, utxo utxo.UnspentTxOutpu
 		return "", err
 	}
 
-	// use TestNet3Params for interacting with bitcoin testnet
-	// if we want to interact with main net should use MainNetParams
-	addrPubKey, err := btcutil.NewAddressWitnessPubKeyHash(btcutil.Hash160(wif.SerializePubKey()), &chaincfg.TestNet3Params)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("src address: ", addrPubKey.EncodeAddress())
+	btcAddresses := PubkeyToAddresses(wif.PrivKey.PubKey(), &chaincfg.TestNet3Params)
+	fromAddressInfo := common.GetBTCAddressInfo(btcAddresses[common.Segwit])
 
 	// extracting destination address as []byte from function argument (destination string)
 	destinationAddr, err := btcutil.DecodeAddress(destination, &chaincfg.TestNet3Params)
@@ -74,31 +69,24 @@ func CreateSegwitTx(privKey string, destination string, utxo utxo.UnspentTxOutpu
 	// adding the destination address and the amount to
 	// the transaction as output
 	redeemTxOut := wire.NewTxOut(amount, destinationAddrByte)
-	fmt.Println("GetPayToAddrScript: ", hexutil.Encode(GetPayToAddrScript(addrPubKey.EncodeAddress())))
-	redeemTxOut1 := wire.NewTxOut(90700, GetPayToAddrScript(addrPubKey.EncodeAddress()))
+	redeemTxOut1 := wire.NewTxOut(90700-amount-212, fromAddressInfo.GetPayToAddrScript())
 
 	redeemTx.AddTxOut(redeemTxOut)
 	redeemTx.AddTxOut(redeemTxOut1)
 
 	// now sign the transaction
-	finalRawTx, err := SignSegwitTx(wif, GetPayToAddrScript(addrPubKey.EncodeAddress()), redeemTx)
+	finalRawTx, err := SignSegwitTx(wif, fromAddressInfo, redeemTx)
 
 	return finalRawTx, err
 }
 
-func SignSegwitTx(wif *btcutil.WIF, sourceScript []byte, redeemTx *wire.MsgTx) (string, error) {
-	fmt.Println("SerializePubKey: ", hexutil.Encode(sourceScript))
-
-	addrPubKey, err := btcutil.NewAddressWitnessPubKeyHash(btcutil.Hash160(wif.SerializePubKey()), &chaincfg.TestNet3Params)
-	if err != nil {
-		return "", err
-	}
+func SignSegwitTx(wif *btcutil.WIF, fromAddressInfo *common.BTCAddressInfo, redeemTx *wire.MsgTx) (string, error) {
 
 	secretStore := author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
-		addrPubKey.EncodeAddress(): wif.PrivKey,
+		fromAddressInfo.Address: wif.PrivKey,
 	}, &chaincfg.TestNet3Params)
 
-	if err := author.AddAllInputScripts(redeemTx, [][]byte{sourceScript}, []btcutil.Amount{91900}, secretStore); err != nil {
+	if err := author.AddAllInputScripts(redeemTx, [][]byte{fromAddressInfo.GetPayToAddrScript()}, []btcutil.Amount{90700}, secretStore); err != nil {
 		return "", nil
 	}
 	var signedTx bytes.Buffer

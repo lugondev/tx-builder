@@ -39,6 +39,12 @@ func GetAddressesFromSeed(mnemonic string, params *chaincfg.Params, number int) 
 	// m/82h/0h/0h/0/*
 	addresses := lo.Map[int64, KeyAddresses](keys, func(_ int64, i int) KeyAddresses {
 		index, _ := receiving.Derive(uint32(i)) // takes an unsigned integer
+		//privKey, _ := index.ECPrivKey()
+		//wif, err := btcutil.NewWIF(privKey, &chaincfg.TestNet3Params, true)
+		//if err != nil {
+		//	return nil
+		//}
+		//fmt.Println("wif code:", wif.String())
 		pubkey, _ := index.ECPubKey()
 		return PubkeyToAddresses(pubkey, params)
 	})

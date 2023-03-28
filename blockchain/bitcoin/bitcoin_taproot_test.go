@@ -5,27 +5,23 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcwallet/wallet/txauthor"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/author"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
+	"github.com/lugondev/tx-builder/pkg/common"
 	"testing"
 )
 
 func TestTaproot(t *testing.T) {
 	rawTx, err := CreateTaprootTx(
-		"eea6db960d8537f33c922aa13ff3442f2cfa1e97a01023b2448b3af759c6833d",
+		"cVacJiScoPMAugWKRwMU2HVUPE4PhcJLgxVCexieWEWcTiYC8bSn",
 		destinationAddress,
 		utxo.UnspentTxOutput{
 			VOut:   1,
-			TxHash: "111984ad61cc14f24f157de1ba8ccf9a38af68914f786983bf7bd96e38a60159",
+			TxHash: "23ce41a1bdd37836b4beedb6ebd51e485834fcddade96a61f9a56b56c088e5e4",
 		},
 		1000)
 
@@ -37,28 +33,24 @@ func TestTaproot(t *testing.T) {
 }
 
 func CreateTaprootTx(privKey string, destination string, utxo utxo.UnspentTxOutput, amount int64) (string, error) {
+	wif, err := btcutil.DecodeWIF(privKey)
+	if err != nil {
+		return "", err
+	}
+	//privateKey, pubKey := btcec.PrivKeyFromBytes(common2.FromHex(privKey))
 
-	privateKey, pubKey := btcec.PrivKeyFromBytes(common.FromHex(privKey))
-
+	btcAddresses := PubkeyToAddresses(wif.PrivKey.PubKey(), &chaincfg.TestNet3Params)
+	fromAddressInfo := common.GetBTCAddressInfo(btcAddresses[common.Taproot])
 	// use TestNet3Params for interacting with bitcoin testnet
 	// if we want to interact with main net should use MainNetParams
-	addrPubKey, err := btcutil.NewAddressTaproot(
-		schnorr.SerializePubKey(txscript.ComputeTaprootKeyNoScript(pubKey)), &chaincfg.TestNet3Params)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("address: ", addrPubKey.EncodeAddress())
+	//addrPubKey, err := btcutil.NewAddressTaproot(
+	//	schnorr.SerializePubKey(txscript.ComputeTaprootKeyNoScript(pubKey)), &chaincfg.TestNet3Params)
+	//if err != nil {
+	//	return "", err
+	//}
+	fmt.Println("address: ", fromAddressInfo.Address)
 	// extracting destination address as []byte from function argument (destination string)
-	destinationAddr, err := btcutil.DecodeAddress(destination, &chaincfg.TestNet3Params)
-	if err != nil {
-		return "", err
-	}
-	fmt.Println("destination address: ", destinationAddr.EncodeAddress())
-
-	destinationAddrByte, err := txscript.PayToAddrScript(destinationAddr)
-	if err != nil {
-		return "", err
-	}
+	toAddressInfo := common.GetBTCAddressInfo(destination)
 
 	redeemTx := wire.NewMsgTx(wire.TxVersion)
 	utxoHash, err := chainhash.NewHashFromStr(utxo.TxHash)
@@ -74,30 +66,24 @@ func CreateTaprootTx(privKey string, destination string, utxo utxo.UnspentTxOutp
 
 	// adding the destination address and the amount to
 	// the transaction as output
-	redeemTxOut := wire.NewTxOut(amount, destinationAddrByte)
-	fmt.Println("GetPayToAddrScript: ", hexutil.Encode(GetPayToAddrScript(addrPubKey.EncodeAddress())))
-	redeemTxOut1 := wire.NewTxOut(7600-amount-200, GetPayToAddrScript(addrPubKey.EncodeAddress()))
+	redeemTxOut := wire.NewTxOut(amount, toAddressInfo.GetPayToAddrScript())
+	redeemTxOut1 := wire.NewTxOut(1657-amount-200, fromAddressInfo.GetPayToAddrScript())
 
 	redeemTx.AddTxOut(redeemTxOut)
 	redeemTx.AddTxOut(redeemTxOut1)
 
-	wif, err := btcutil.NewWIF(privateKey, &chaincfg.TestNet3Params, true)
-	if err != nil {
-		return "", err
-	}
 	// now sign the transaction
-	finalRawTx, err := SignTaprootTx(wif, addrPubKey, redeemTx)
+	finalRawTx, err := SignTaprootTx(wif.PrivKey, fromAddressInfo, redeemTx)
 
 	return finalRawTx, err
 }
 
-func SignTaprootTx(wif *btcutil.WIF, addrPubKey *btcutil.AddressTaproot, redeemTx *wire.MsgTx) (string, error) {
-	sourceScript := GetPayToAddrScript(addrPubKey.EncodeAddress())
-
+func SignTaprootTx(privateKey *btcec.PrivateKey, fromAddressInfo *common.BTCAddressInfo, redeemTx *wire.MsgTx) (string, error) {
 	secretStore := author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
-		addrPubKey.EncodeAddress(): wif.PrivKey,
-	}, &chaincfg.TestNet3Params)
-	if err := txauthor.AddAllInputScripts(redeemTx, [][]byte{sourceScript}, []btcutil.Amount{7600}, secretStore); err != nil {
+		fromAddressInfo.Address: privateKey,
+	}, fromAddressInfo.GetChainConfig())
+
+	if err := author.AddAllInputScripts(redeemTx, [][]byte{fromAddressInfo.GetPayToAddrScript()}, []btcutil.Amount{1657}, secretStore); err != nil {
 		return "", nil
 	}
 
