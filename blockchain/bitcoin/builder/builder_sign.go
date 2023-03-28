@@ -18,7 +18,7 @@ import (
 //		addrPubKey.EncodeAddress(): wif,
 //	}, &chaincfg.TestNet3Params)
 //
-//	if err := txauthor.AddAllInputScripts(redeemTx, [][]byte{t.FromAddressInfo.GetPayToAddrScript()}, []btcutil.Amount{102100}, secretStore); err != nil {
+//	if err := txauthor.AddAllInputScripts(redeemTx, [][]byte{t.SourceAddressInfo.GetPayToAddrScript()}, []btcutil.Amount{102100}, secretStore); err != nil {
 //		return nil, err
 //	}
 //	var signedTx bytes.Buffer
@@ -35,7 +35,7 @@ func (t *TxBtc) signLegacyTx(tx *wire.MsgTx) ([]byte, error) {
 		return nil, errors.New("utxos is empty")
 	}
 	//for i := range t.utxos {
-	//	signature, err := txscript.SignatureScript(redeemTx, i, t.FromAddressInfo.GetPayToAddrScript(), txscript.SigHashAll, t.privKey, true)
+	//	signature, err := txscript.SignatureScript(redeemTx, i, t.SourceAddressInfo.GetPayToAddrScript(), txscript.SigHashAll, t.privKey, true)
 	//	if err != nil {
 	//		return nil, err
 	//	}
@@ -43,10 +43,10 @@ func (t *TxBtc) signLegacyTx(tx *wire.MsgTx) ([]byte, error) {
 	//}
 
 	secretStore := author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
-		t.FromAddressInfo.Address: t.privKey,
+		t.SourceAddressInfo.Address: t.privKey,
 	}, t.chainCfg)
 
-	if err := author.AddAllInputScripts(tx, [][]byte{t.fromScript, t.fromScript, t.fromScript, t.fromScript}, t.amountsInput, secretStore); err != nil {
+	if err := author.AddAllInputScripts(tx, [][]byte{t.sourceScript, t.sourceScript, t.sourceScript, t.sourceScript}, t.amountsInput, secretStore); err != nil {
 		return nil, err
 	}
 

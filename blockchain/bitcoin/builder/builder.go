@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -9,53 +10,40 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/author"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"github.com/lugondev/tx-builder/pkg/common"
-	"math"
 )
 
-type TxBtc struct {
-	pubkey  *btcec.PublicKey
-	privKey *btcec.PrivateKey
+func NewTxBtcBuilder(pubkey []byte, addressType common.BTCAddressType, chainCfg *chaincfg.Params) (*TxBtc, error) {
+	txBtc := &TxBtc{
+		sourceAddressType: addressType,
+		chainCfg:          chainCfg,
+	}
+	txBtc.SetPubkey(pubkey)
 
-	FromAddressInfo *common.BTCAddressInfo
-	fromAddressType common.BTCAddressType
-	fromScript      []byte
-	chainCfg        *chaincfg.Params
-
-	utxos        []*utxo.UnspentTxOutput
-	outputs      []Output
-	amountsInput []btcutil.Amount
-
-	TxBytes         int64
-	FeeRate         int64
-	EstimateBalance int64
-}
-
-type Output struct {
-	Amount      int64
-	Address     string
-	Script      []byte
-	AddressInfo *common.BTCAddressInfo
-}
-
-func NewTxBtcBuilder(addressType common.BTCAddressType, chainCfg *chaincfg.Params) (*TxBtc, error) {
-	return &TxBtc{
-		fromAddressType: addressType,
-		chainCfg:        chainCfg,
-	}, nil
+	return txBtc, nil
 }
 
 func (t *TxBtc) SetPrivKey(privKey *btcec.PrivateKey) *TxBtc {
 	t.privKey = privKey
-	t.pubkey = privKey.PubKey()
-	addresses := bitcoin.PubkeyToAddresses(t.pubkey, t.chainCfg)
-	t.FromAddressInfo = common.GetBTCAddressInfo(addresses[t.fromAddressType])
+	if t.pubkey == nil {
+		t.SetPubkey(privKey.PubKey().SerializeUncompressed())
+	} else if t.pubkey.IsEqual(privKey.PubKey()) == false {
+		return nil
+	}
+
+	t.secretStore = author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
+		t.SourceAddressInfo.Address: privKey,
+	}, t.SourceAddressInfo.GetChainConfig())
 
 	return t
 }
 
 func (t *TxBtc) SetPubkey(pubkey []byte) *TxBtc {
+	if pubkey == nil || len(pubkey) == 0 {
+		return nil
+	}
 	pubKey, err := btcec.ParsePubKey(pubkey)
 	if err != nil {
 		fmt.Println("parse pubkey error", err)
@@ -64,8 +52,8 @@ func (t *TxBtc) SetPubkey(pubkey []byte) *TxBtc {
 	t.pubkey = pubKey
 
 	addresses := bitcoin.PubkeyToAddresses(pubKey, t.chainCfg)
-	t.FromAddressInfo = common.GetBTCAddressInfo(addresses[t.fromAddressType])
-	t.fromScript = t.FromAddressInfo.GetPayToAddrScript()
+	t.SourceAddressInfo = common.GetBTCAddressInfo(addresses[t.sourceAddressType])
+	t.sourceScript = t.SourceAddressInfo.GetPayToAddrScript()
 
 	return t
 }
@@ -74,33 +62,26 @@ func (t *TxBtc) GetPubKey() *btcec.PublicKey {
 	return t.pubkey
 }
 
-func (t *TxBtc) SetOutputs(outputs []Output) *TxBtc {
+func (t *TxBtc) SetOutputs(outputs []*Output) *TxBtc {
+	t.outputs = make([]*wire.TxOut, len(outputs))
 	for i := range outputs {
-		info := common.GetBTCAddressInfo(outputs[i].Address)
-		if info == nil || info.GetChainConfig().Net != t.chainCfg.Net {
-			fmt.Println("address type or chain config not match")
+		err := outputs[i].HandleAddressInfo(t.chainCfg)
+		if err != nil {
 			return nil
 		}
-		outputs[i].AddressInfo = info
-		outputs[i].Script = info.GetPayToAddrScript()
+
+		t.outputs[i] = wire.NewTxOut(outputs[i].Amount, outputs[i].GetScript())
 	}
 
-	t.outputs = outputs
 	return t
 }
 
 func (t *TxBtc) SetFeeRate(fee int64) *TxBtc {
+	if fee < 1000 {
+		return nil
+	}
 	t.FeeRate = fee
 	return t
-}
-
-func (t *TxBtc) SetTxBytes(txBytes float64) *TxBtc {
-	t.TxBytes = int64(math.Ceil(txBytes))
-	return t
-}
-
-func (t *TxBtc) CalcFee() int64 {
-	return t.FeeRate * t.TxBytes
 }
 
 func (t *TxBtc) SetUtxos(utxos []*utxo.UnspentTxOutput) *TxBtc {
@@ -113,41 +94,69 @@ func (t *TxBtc) SetUtxos(utxos []*utxo.UnspentTxOutput) *TxBtc {
 	return t
 }
 
-func (t *TxBtc) LegacyTx() ([]byte, error) {
-	redeemTx := wire.NewMsgTx(wire.TxVersion)
+func (t *TxBtc) getFetchInputs() author.InputSource {
+	return func(target btcutil.Amount) (total btcutil.Amount, inputs []*wire.TxIn,
+		inputValues []btcutil.Amount, scripts [][]byte, err error) {
 
+		for _, utx := range t.utxos {
+			total += btcutil.Amount(utx.Value)
+
+			utxoHash, err := chainhash.NewHashFromStr(utx.TxHash)
+			if err != nil {
+				continue
+			}
+			outPoint := wire.NewOutPoint(utxoHash, uint32(utx.VOut))
+			inputs = append(inputs, wire.NewTxIn(outPoint, nil, nil))
+			inputValues = append(inputValues, btcutil.Amount(utx.Value))
+			scripts = append(scripts, t.sourceScript)
+		}
+
+		return total, inputs, inputValues, scripts, nil
+	}
+}
+
+func (t *TxBtc) SetChangeSource(address string) *TxBtc {
+	addressInfo := common.GetBTCAddressInfo(address)
+	if addressInfo == nil || addressInfo.GetChainConfig().Net != t.chainCfg.Net {
+		return nil
+	}
+
+	t.changeSource = &author.ChangeSource{
+		NewScript: func() ([]byte, error) {
+			return addressInfo.GetPayToAddrScript(), nil
+		},
+		ScriptSize: len(addressInfo.GetPayToAddrScript()),
+	}
+	return t
+}
+
+func (t *TxBtc) Build() ([]byte, error) {
 	if t.utxos == nil || len(t.utxos) == 0 {
 		return nil, errors.New("utxos is empty")
 	}
-
-	for i := range t.utxos {
-		utxoHash, err := chainhash.NewHashFromStr(t.utxos[i].TxHash)
-		if err != nil {
-			return nil, err
-		}
-		// the second argument is vout or Tx-index, which is the index
-		// of spending UTXO in the transaction that TxId referred to
-		// in this case is 1, but can vary different numbers
-		outPoint := wire.NewOutPoint(utxoHash, uint32(t.utxos[i].VOut))
-
-		// making the input, and adding it to transaction
-		txIn := wire.NewTxIn(outPoint, nil, nil)
-		redeemTx.AddTxIn(txIn)
+	if t.FeeRate == 0 || t.FeeRate < 1000 {
+		return nil, errors.New("fee rate is too low")
 	}
 
+	var outputs []*wire.TxOut
 	if t.outputs == nil || len(t.outputs) == 0 {
-		return nil, errors.New("outputs is empty")
+		outputs = []*wire.TxOut{}
+	} else {
+		outputs = t.outputs
 	}
 
-	for i := range t.outputs {
-		// adding the destination address and the amount to
-		// the transaction as output
-		redeemTxOut := wire.NewTxOut(t.outputs[i].Amount, t.outputs[i].Script)
-		redeemTx.AddTxOut(redeemTxOut)
+	transaction, err := author.NewUnsignedTransaction(outputs, btcutil.Amount(t.FeeRate), t.getFetchInputs(), t.changeSource)
+	if err != nil {
+		return nil, err
+	}
+	if err := transaction.AddAllInputScripts(t.secretStore); err != nil {
+		return nil, err
 	}
 
-	// now sign the transaction
-	finalRawTx, err := t.signLegacyTx(redeemTx)
+	var signedTx bytes.Buffer
+	if err := transaction.Tx.Serialize(&signedTx); err != nil {
+		return nil, err
+	}
 
-	return finalRawTx, err
+	return signedTx.Bytes(), err
 }
