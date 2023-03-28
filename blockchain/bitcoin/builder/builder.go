@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -13,6 +14,7 @@ import (
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/author"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"github.com/lugondev/tx-builder/pkg/common"
+	"github.com/status-im/keycard-go/hexutils"
 )
 
 func NewTxBtcBuilder(pubkey []byte, addressType common.BTCAddressType, chainCfg *chaincfg.Params) (*TxBtc, error) {
@@ -159,4 +161,9 @@ func (t *TxBtc) Build() ([]byte, error) {
 	}
 
 	return signedTx.Bytes(), err
+}
+
+func (t *TxBtc) SignWithECDSA(privKey *btcec.PrivateKey, msgHash []byte) (rsv string, err error) {
+	sig := ecdsa.Sign(privKey, msgHash)
+	return hexutils.BytesToHex(sig.Serialize()), nil
 }

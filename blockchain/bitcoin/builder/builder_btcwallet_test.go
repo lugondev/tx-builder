@@ -9,6 +9,7 @@ import (
 	"github.com/lugondev/tx-builder/pkg/client"
 	"github.com/lugondev/tx-builder/pkg/common"
 	"github.com/status-im/keycard-go/hexutils"
+	"math/rand"
 	"testing"
 )
 
@@ -39,7 +40,7 @@ func TestBuilderBTCWallet(t *testing.T) {
 		SetOutputs([]*Output{
 			{
 				Address: toAddress,
-				Amount:  1121,
+				Amount:  rand.Int63n(200) + 900,
 			},
 		}).
 		Build()

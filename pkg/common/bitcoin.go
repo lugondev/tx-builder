@@ -3,7 +3,7 @@ package common
 import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/txscript"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/txscript"
 	"strings"
 )
 
