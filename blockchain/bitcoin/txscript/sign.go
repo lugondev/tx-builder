@@ -6,12 +6,11 @@ package txscript
 
 import (
 	"errors"
-
+	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
-
-	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 )
@@ -22,7 +21,7 @@ import (
 // signs a new sighash digest defined in BIP0143.
 func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	amt int64, subScript []byte, hashType SigHashType,
-	key *btcec.PrivateKey) ([]byte, error) {
+	kdb KeyDB, pubkey []byte) ([]byte, error) {
 
 	hash, err := calcWitnessSignatureHashRaw(subScript, sigHashes, hashType, tx,
 		idx, amt)
@@ -30,9 +29,12 @@ func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 		return nil, err
 	}
 
-	signature := ecdsa.Sign(key, hash)
+	signature, err := kdb.Sign(pubkey, hash)
+	if err != nil {
+		return nil, err
+	}
 
-	return append(signature.Serialize(), byte(hashType)), nil
+	return append(signature, byte(hashType)), nil
 }
 
 // WitnessSignature creates an input witness stack for tx to spend BTC sent
@@ -41,16 +43,18 @@ func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 // dictated by the passed hashType. The signature generated observes the new
 // transaction digest algorithm defined within BIP0143.
 func WitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64,
-	subscript []byte, hashType SigHashType, privKey *btcec.PrivateKey,
-	compress bool) (wire.TxWitness, error) {
+	subscript []byte, hashType SigHashType, kdb KeyDB, pubkey []byte, compress bool) (wire.TxWitness, error) {
 
 	sig, err := RawTxInWitnessSignature(tx, sigHashes, idx, amt, subscript,
-		hashType, privKey)
+		hashType, kdb, pubkey)
 	if err != nil {
 		return nil, err
 	}
 
-	pk := privKey.PubKey()
+	pk, err := btcec.ParsePubKey(pubkey)
+	if err != nil {
+		return nil, err
+	}
 	var pkData []byte
 	if compress {
 		pkData = pk.SerializeCompressed()
@@ -68,8 +72,8 @@ func WitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64
 // specified, then the returned signature is 64-byte in length, as it omits the
 // additional byte to denote the sighash type.
 func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
-	amt int64, pkScript []byte, tapScriptRootHash []byte, hashType SigHashType,
-	key *btcec.PrivateKey) ([]byte, error) {
+	amt int64, pkScript []byte, hashType SigHashType,
+	kdb KeyDB, pubkey []byte) ([]byte, error) {
 
 	// First, we'll start by compute the top-level taproot sighash.
 	sigHash, err := calcTaprootSignatureHashRaw(
@@ -80,13 +84,7 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 		return nil, err
 	}
 
-	// Before we sign the sighash, we'll need to apply the taptweak to the
-	// private key based on the tapScriptRootHash.
-	privKeyTweak := TweakTaprootPrivKey(*key, tapScriptRootHash)
-
-	// With the sighash constructed, we can sign it with the specified
-	// private key.
-	signature, err := schnorr.Sign(privKeyTweak, sigHash)
+	signature, err := kdb.SignTaproot(pubkey, sigHash)
 	if err != nil {
 		return nil, err
 	}
@@ -113,15 +111,14 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 // TODO(roasbeef): add support for annex even tho it's non-standard?
 func TaprootWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	amt int64, pkScript []byte, hashType SigHashType,
-	key *btcec.PrivateKey) (wire.TxWitness, error) {
+	kdb KeyDB, pubkey []byte) (wire.TxWitness, error) {
 
 	// As we're assuming this was a BIP 86 key, we use an empty root hash
 	// which means output key commits to just the public key.
-	fakeTapscriptRootHash := []byte{}
 
 	sig, err := RawTxInTaprootSignature(
-		tx, sigHashes, idx, amt, pkScript, fakeTapscriptRootHash,
-		hashType, key,
+		tx, sigHashes, idx, amt, pkScript,
+		hashType, kdb, pubkey,
 	)
 	if err != nil {
 		return nil, err
@@ -133,57 +130,21 @@ func TaprootWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	return wire.TxWitness{sig}, nil
 }
 
-// RawTxInTapscriptSignature computes a raw schnorr signature for a signature
-// generated from a tapscript leaf. This differs from the
-// RawTxInTaprootSignature which is used to generate signatures for top-level
-// taproot key spends.
-//
-// TODO(roasbeef): actually add code-sep to interface? not really used
-// anywhere....
-func RawTxInTapscriptSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
-	amt int64, pkScript []byte, tapLeaf TapLeaf, hashType SigHashType,
-	privKey *btcec.PrivateKey) ([]byte, error) {
-
-	// First, we'll start by compute the top-level taproot sighash.
-	tapLeafHash := tapLeaf.TapHash()
-	sigHash, err := calcTaprootSignatureHashRaw(
-		sigHashes, hashType, tx, idx,
-		NewCannedPrevOutputFetcher(pkScript, amt),
-		WithBaseTapscriptVersion(blankCodeSepValue, tapLeafHash[:]),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// With the sighash constructed, we can sign it with the specified
-	// private key.
-	signature, err := schnorr.Sign(privKey, sigHash)
-	if err != nil {
-		return nil, err
-	}
-
-	// Finally, append the sighash type to the final sig if it's not the
-	// default sighash value (in which case appending it is disallowed).
-	if hashType != SigHashDefault {
-		return append(signature.Serialize(), byte(hashType)), nil
-	}
-
-	// The default sighash case where we'll return _just_ the signature.
-	return signature.Serialize(), nil
-}
-
 // RawTxInSignature returns the serialized ECDSA signature for the input idx of
 // the given transaction, with hashType appended to it.
 func RawTxInSignature(tx *wire.MsgTx, idx int, subScript []byte,
-	hashType SigHashType, key *btcec.PrivateKey) ([]byte, error) {
-
+	hashType SigHashType, kdb KeyDB, pubkey []byte) ([]byte, error) {
 	hash, err := CalcSignatureHash(subScript, hashType, tx, idx)
 	if err != nil {
 		return nil, err
 	}
-	signature := ecdsa.Sign(key, hash)
 
-	return append(signature.Serialize(), byte(hashType)), nil
+	signature, err := kdb.Sign(pubkey, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(signature, byte(hashType)), nil
 }
 
 // SignatureScript creates an input signature script for tx to spend BTC sent
@@ -194,13 +155,15 @@ func RawTxInSignature(tx *wire.MsgTx, idx int, subScript []byte,
 // as the idx'th input. privKey is serialized in either a compressed or
 // uncompressed format based on compress. This format must match the same format
 // used to generate the payment address, or the script validation will fail.
-func SignatureScript(tx *wire.MsgTx, idx int, subscript []byte, hashType SigHashType, privKey *btcec.PrivateKey, compress bool) ([]byte, error) {
-	sig, err := RawTxInSignature(tx, idx, subscript, hashType, privKey)
+func SignatureScript(tx *wire.MsgTx, idx int, subscript []byte, hashType SigHashType, kdb KeyDB, pubkey []byte, compress bool) ([]byte, error) {
+	sig, err := RawTxInSignature(tx, idx, subscript, hashType, kdb, pubkey)
 	if err != nil {
 		return nil, err
 	}
-
-	pk := privKey.PubKey()
+	pk, err := btcec.ParsePubKey(pubkey)
+	if err != nil {
+		return nil, err
+	}
 	var pkData []byte
 	if compress {
 		pkData = pk.SerializeCompressed()
@@ -211,8 +174,8 @@ func SignatureScript(tx *wire.MsgTx, idx int, subscript []byte, hashType SigHash
 	return NewScriptBuilder().AddData(sig).AddData(pkData).Script()
 }
 
-func p2pkSignatureScript(tx *wire.MsgTx, idx int, subScript []byte, hashType SigHashType, privKey *btcec.PrivateKey) ([]byte, error) {
-	sig, err := RawTxInSignature(tx, idx, subScript, hashType, privKey)
+func p2pkSignatureScript(tx *wire.MsgTx, idx int, subScript []byte, hashType SigHashType, kdb KeyDB, pubkey []byte) ([]byte, error) {
+	sig, err := RawTxInSignature(tx, idx, subScript, hashType, kdb, pubkey)
 	if err != nil {
 		return nil, err
 	}
@@ -225,18 +188,18 @@ func p2pkSignatureScript(tx *wire.MsgTx, idx int, subScript []byte, hashType Sig
 // the contract (i.e. nrequired signatures are provided).  Since it is arguably
 // legal to not be able to sign any of the outputs, no error is returned.
 func signMultiSig(tx *wire.MsgTx, idx int, subScript []byte, hashType SigHashType,
-	addresses []btcutil.Address, nRequired int, kdb KeyDB) ([]byte, bool) {
+	addresses []btcutil.Address, nRequired int, kdb KeyDB, sdb ScriptDB) ([]byte, bool) {
 	// We start with a single OP_FALSE to work around the (now standard)
 	// but in the reference implementation that causes a spurious pop at
 	// the end of OP_CHECKMULTISIG.
 	builder := NewScriptBuilder().AddOp(OP_FALSE)
 	signed := 0
 	for _, addr := range addresses {
-		key, _, err := kdb.GetKey(addr)
+		pubkey, _, err := sdb.GetPubkey(addr)
 		if err != nil {
 			continue
 		}
-		sig, err := RawTxInSignature(tx, idx, subScript, hashType, key)
+		sig, err := RawTxInSignature(tx, idx, subScript, hashType, kdb, pubkey)
 		if err != nil {
 			continue
 		}
@@ -265,34 +228,37 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int,
 
 	switch class {
 	case PubKeyTy:
-		// look up key for address
-		key, _, err := kdb.GetKey(addresses[0])
+		fmt.Println("class sign:", "PubKeyTy")
+		// look up pubkey for address
+		pubkey, _, err := sdb.GetPubkey(addresses[0])
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
 
 		script, err := p2pkSignatureScript(tx, idx, subScript, hashType,
-			key)
+			kdb, pubkey)
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
 
 		return script, class, addresses, nrequired, nil
 	case PubKeyHashTy:
-		// look up key for address
-		key, compressed, err := kdb.GetKey(addresses[0])
+		fmt.Println("class sign:", "PubKeyHashTy")
+		// look up pubkey for address
+		pubkey, compressed, err := sdb.GetPubkey(addresses[0])
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
 
 		script, err := SignatureScript(tx, idx, subScript, hashType,
-			key, compressed)
+			kdb, pubkey, compressed)
 		if err != nil {
 			return nil, class, nil, 0, err
 		}
 
 		return script, class, addresses, nrequired, nil
 	case ScriptHashTy:
+		fmt.Println("class sign:", "ScriptHashTy")
 		script, err := sdb.GetScript(addresses[0])
 		if err != nil {
 			return nil, class, nil, 0, err
@@ -300,8 +266,9 @@ func sign(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int,
 
 		return script, class, addresses, nrequired, nil
 	case MultiSigTy:
+		fmt.Println("class sign:", "MultiSigTy")
 		script, _ := signMultiSig(tx, idx, subScript, hashType,
-			addresses, nrequired, kdb)
+			addresses, nrequired, kdb, sdb)
 		return script, class, addresses, nrequired, nil
 	case NullDataTy:
 		return nil, class, nil, 0,
@@ -512,6 +479,8 @@ func mergeScripts(chainParams *chaincfg.Params, tx *wire.MsgTx, idx int,
 // KeyDB is an interface type provided to SignTxOutput, it encapsulates
 // any user state required to get the private keys for an address.
 type KeyDB interface {
+	Sign(pubkey []byte, data []byte) ([]byte, error)
+	SignTaproot(pubkey []byte, data []byte) (*schnorr.Signature, error)
 	GetKey(btcutil.Address) (*btcec.PrivateKey, bool, error)
 }
 
@@ -527,6 +496,7 @@ func (kc KeyClosure) GetKey(address btcutil.Address) (*btcec.PrivateKey, bool, e
 // user state required to get the scripts for an pay-to-script-hash address.
 type ScriptDB interface {
 	GetScript(btcutil.Address) ([]byte, error)
+	GetPubkey(btcutil.Address) ([]byte, bool, error)
 }
 
 // ScriptClosure implements ScriptDB with a closure.

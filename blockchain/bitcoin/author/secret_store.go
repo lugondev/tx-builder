@@ -3,32 +3,68 @@ package author
 import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcwallet/wallet/txauthor"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/txscript"
+	"github.com/status-im/keycard-go/hexutils"
 )
 
-var _ txauthor.SecretsSource = (*MemorySecretStore)(nil)
+var _ SecretsSource = (*MemorySecretStore)(nil)
 
-func NewMemorySecretStore(keyMap map[string]*btcec.PrivateKey, params *chaincfg.Params) MemorySecretStore {
+func NewMemorySecretStore(addressMap map[string]*btcec.PrivateKey, pubkeyMap map[string]*btcec.PrivateKey, params *chaincfg.Params) MemorySecretStore {
 	return MemorySecretStore{
-		keyMap: keyMap,
-		params: params,
+		addressMap: addressMap,
+		pubkeyMap:  pubkeyMap,
+		params:     params,
 	}
 }
 
 type MemorySecretStore struct {
-	keyMap map[string]*btcec.PrivateKey
-	params *chaincfg.Params
+	addressMap map[string]*btcec.PrivateKey
+	pubkeyMap  map[string]*btcec.PrivateKey
+	params     *chaincfg.Params
 }
 
 func (m MemorySecretStore) GetKey(address btcutil.Address) (*btcec.PrivateKey, bool, error) {
-	privKey, found := m.keyMap[address.EncodeAddress()]
+	privKey, found := m.addressMap[address.EncodeAddress()]
 	if !found {
 		return nil, false, fmt.Errorf("address not found")
 	}
 	return privKey, true, nil
+}
+
+func (m MemorySecretStore) GetPubkey(address btcutil.Address) ([]byte, bool, error) {
+	privKey, found := m.addressMap[address.EncodeAddress()]
+	if !found {
+		return nil, false, fmt.Errorf("pubkey: address not found")
+	}
+	return privKey.PubKey().SerializeCompressed(), true, nil
+}
+
+func (m MemorySecretStore) Sign(pubkey []byte, data []byte) ([]byte, error) {
+	//privKey, found := m.pubkeyMap[hexutil.Encode(pubkey)]
+	//if !found {
+	//	return nil, fmt.Errorf("pubkey not found: %s", hexutil.Encode(pubkey))
+	//}
+	//sig1 := ecdsa.Sign(privKey, data)
+	sig, err := bitcoin.Sign(data, "ecdsa")
+	if err != nil {
+		return nil, err
+	}
+	//sig := sig1.Serialize()
+	fmt.Println("len sig", len(sig))
+	fmt.Println("hex sig", hexutils.BytesToHex(sig))
+	return sig, nil
+}
+
+func (m MemorySecretStore) SignTaproot(pubkey []byte, data []byte) (*schnorr.Signature, error) {
+	sig, err := bitcoin.Sign(data, "taproot")
+	if err != nil {
+		return nil, err
+	}
+	return schnorr.ParseSignature(sig)
 }
 
 func (m MemorySecretStore) GetScript(address btcutil.Address) ([]byte, error) {

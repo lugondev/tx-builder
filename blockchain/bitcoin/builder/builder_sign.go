@@ -44,6 +44,8 @@ func (t *TxBtc) signLegacyTx(tx *wire.MsgTx) ([]byte, error) {
 
 	secretStore := author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
 		t.SourceAddressInfo.Address: t.privKey,
+	}, map[string]*btcec.PrivateKey{
+		t.SourceAddressInfo.Address: t.privKey,
 	}, t.chainCfg)
 
 	if err := author.AddAllInputScripts(tx, [][]byte{t.sourceScript, t.sourceScript, t.sourceScript, t.sourceScript}, t.amountsInput, secretStore); err != nil {

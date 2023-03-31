@@ -13,11 +13,13 @@ import (
 )
 
 func TestBuilderSignExternal(t *testing.T) {
-	wif, err := btcutil.DecodeWIF("cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr")
+	//wif, err := btcutil.DecodeWIF("cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr")
+	wif, err := btcutil.DecodeWIF("cVacJiScoPMAugWKRwMU2HVUPE4PhcJLgxVCexieWEWcTiYC8bSn")
 	if err != nil {
 		t.Fatal(err)
 	}
-	builder, err := NewTxBtcBuilder(wif.SerializePubKey(), common.Legacy, &chaincfg.TestNet3Params)
+
+	builder, err := NewTxBtcBuilder(wif.SerializePubKey(), common.Nested, &chaincfg.TestNet3Params)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,14 +36,15 @@ func TestBuilderSignExternal(t *testing.T) {
 
 	signedTx, err := builder.SetUtxos(*utxos.ToUTXOs()).
 		SetPrivKey(wif.PrivKey).
-		SetChangeSource(builder.SourceAddressInfo.Address).
+		SweepTo("tb1pr375lf8f88dzkxhhecpqarp9w5580eysuycu40czz8s2phd86gss9rwnaf").
 		SetFeeRate(1000).
-		SetOutputs([]*Output{
-			{
-				Address: toAddress,
-				Amount:  919,
-			},
-		}).
+		//SetChangeSource(builder.SourceAddressInfo.Address).
+		//SetOutputs([]*Output{
+		//	{
+		//		Address: "n47m9mEe4vXHvgWfXFZZit38NSranTwC6f",
+		//		Amount:  rand.Int63n(200) + 1500,
+		//	},
+		//}).
 		Build()
 
 	if err != nil {

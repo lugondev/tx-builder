@@ -7,6 +7,8 @@ package author
 
 import (
 	"errors"
+	"fmt"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
@@ -284,11 +286,15 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 	if err != nil {
 		return err
 	}
-	privKey, compressed, err := secrets.GetKey(addrs[0])
+
+	pk, compressed, err := secrets.GetPubkey(addrs[0])
 	if err != nil {
 		return err
 	}
-	pubKey := privKey.PubKey()
+	pubKey, err := btcec.ParsePubKey(pk)
+	if err != nil {
+		return err
+	}
 
 	// Once we have the key pair, generate a p2wkh address type, respecting
 	// the compression type of the generated key.
@@ -310,8 +316,9 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 	if err != nil {
 		return err
 	}
+
 	witnessScript, err := txscript.WitnessSignature(tx, hashCache, idx,
-		inputValue, witnessProgram, txscript.SigHashAll, privKey, true)
+		inputValue, witnessProgram, txscript.SigHashAll, secrets, pk, compressed)
 	if err != nil {
 		return err
 	}
@@ -338,7 +345,7 @@ func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 	if err != nil {
 		return err
 	}
-	privKey, _, err := secrets.GetKey(addrs[0])
+	pubkey, _, err := secrets.GetPubkey(addrs[0])
 	if err != nil {
 		return err
 	}
@@ -347,7 +354,7 @@ func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 	// output.
 	witnessScript, err := txscript.TaprootWitnessSignature(
 		tx, hashCache, idx, inputValue, pkScript,
-		txscript.SigHashDefault, privKey,
+		txscript.SigHashDefault, secrets, pubkey,
 	)
 	if err != nil {
 		return err
@@ -375,11 +382,14 @@ func spendNestedWitnessPubKeyHash(txIn *wire.TxIn, pkScript []byte,
 	if err != nil {
 		return err
 	}
-	privKey, compressed, err := secrets.GetKey(addrs[0])
+	pk, compressed, err := secrets.GetPubkey(addrs[0])
 	if err != nil {
 		return err
 	}
-	pubKey := privKey.PubKey()
+	pubKey, err := btcec.ParsePubKey(pk)
+	if err != nil {
+		return err
+	}
 
 	var pubKeyHash []byte
 	if compressed {
@@ -392,8 +402,10 @@ func spendNestedWitnessPubKeyHash(txIn *wire.TxIn, pkScript []byte,
 	// the p2sh output. The sigScript will contain only a single push of
 	// the p2wkh witness program corresponding to the matching public key
 	// of this address.
+
 	p2wkhAddr, err := btcutil.NewAddressWitnessPubKeyHash(pubKeyHash, chainParams)
 	if err != nil {
+		fmt.Println("next step...")
 		return err
 	}
 	witnessProgram, err := txscript.PayToAddrScript(p2wkhAddr)
@@ -407,11 +419,10 @@ func spendNestedWitnessPubKeyHash(txIn *wire.TxIn, pkScript []byte,
 		return err
 	}
 	txIn.SignatureScript = sigScript
-
 	// With the sigScript in place, we'll next generate the proper witness
 	// that'll allow us to spend the p2wkh output.
 	witnessScript, err := txscript.WitnessSignature(tx, hashCache, idx,
-		inputValue, witnessProgram, txscript.SigHashAll, privKey, compressed)
+		inputValue, witnessProgram, txscript.SigHashAll, secrets, pk, compressed)
 	if err != nil {
 		return err
 	}

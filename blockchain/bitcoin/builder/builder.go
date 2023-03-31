@@ -10,11 +10,12 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lugondev/tx-builder/blockchain/bitcoin"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/author"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/chain"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"github.com/lugondev/tx-builder/pkg/common"
-	"github.com/status-im/keycard-go/hexutils"
+	"strings"
 )
 
 func NewTxBtcBuilder(pubkey []byte, addressType common.BTCAddressType, chainCfg *chaincfg.Params) (*TxBtc, error) {
@@ -34,9 +35,12 @@ func (t *TxBtc) SetPrivKey(privKey *btcec.PrivateKey) *TxBtc {
 	} else if t.pubkey.IsEqual(privKey.PubKey()) == false {
 		return nil
 	}
+	pubkey := hexutil.Encode(t.pubkey.SerializeCompressed())
 
 	t.secretStore = author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
 		t.SourceAddressInfo.Address: privKey,
+	}, map[string]*btcec.PrivateKey{
+		strings.ToLower(pubkey): privKey,
 	}, t.SourceAddressInfo.GetChainConfig())
 
 	return t
@@ -53,7 +57,7 @@ func (t *TxBtc) SetPubkey(pubkey []byte) *TxBtc {
 	}
 	t.pubkey = pubKey
 
-	addresses := bitcoin.PubkeyToAddresses(pubKey, t.chainCfg)
+	addresses := chain.PubkeyToAddresses(pubKey, t.chainCfg)
 	t.SourceAddressInfo = common.GetBTCAddressInfo(addresses[t.sourceAddressType])
 	t.sourceScript = t.SourceAddressInfo.GetPayToAddrScript()
 
@@ -132,6 +136,10 @@ func (t *TxBtc) SetChangeSource(address string) *TxBtc {
 	return t
 }
 
+func (t *TxBtc) SweepTo(address string) *TxBtc {
+	return t.SetChangeSource(address)
+}
+
 func (t *TxBtc) Build() ([]byte, error) {
 	if t.utxos == nil || len(t.utxos) == 0 {
 		return nil, errors.New("utxos is empty")
@@ -165,5 +173,5 @@ func (t *TxBtc) Build() ([]byte, error) {
 
 func (t *TxBtc) SignWithECDSA(privKey *btcec.PrivateKey, msgHash []byte) (rsv string, err error) {
 	sig := ecdsa.Sign(privKey, msgHash)
-	return hexutils.BytesToHex(sig.Serialize()), nil
+	return hexutil.Encode(sig.Serialize()), nil
 }

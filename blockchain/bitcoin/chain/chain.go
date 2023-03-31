@@ -1,4 +1,4 @@
-package bitcoin
+package chain
 
 import (
 	"encoding/json"

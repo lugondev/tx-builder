@@ -1,4 +1,4 @@
-package bitcoin
+package chain
 
 import (
 	"fmt"
@@ -50,6 +50,8 @@ func TestGetWifFromPrivateKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println("wif code: ", wif.String())
+
+	privateKeyToAddresses(t, privateKey)
 }
 
 func TestGetAddressFromPrivateKey(t *testing.T) {

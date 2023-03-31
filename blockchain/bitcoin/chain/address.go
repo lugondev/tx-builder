@@ -1,4 +1,4 @@
-package bitcoin
+package chain
 
 import (
 	"github.com/btcsuite/btcd/btcec/v2"

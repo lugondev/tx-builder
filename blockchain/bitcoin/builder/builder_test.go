@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/lugondev/tx-builder/blockchain/bitcoin"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/chain"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"github.com/lugondev/tx-builder/pkg/client"
 	"github.com/lugondev/tx-builder/pkg/common"
@@ -41,7 +41,7 @@ func TestBuilder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	btcAddresses := bitcoin.PubkeyToAddresses(wif.PrivKey.PubKey(), &chaincfg.TestNet3Params)
+	btcAddresses := chain.PubkeyToAddresses(wif.PrivKey.PubKey(), &chaincfg.TestNet3Params)
 	fromAddressInfo := common.GetBTCAddressInfo(btcAddresses[common.Legacy])
 	fmt.Println("address legacy: ", fromAddressInfo.Address)
 
@@ -70,5 +70,5 @@ func TestBuilder(t *testing.T) {
 	//if err != nil {
 	//	t.Fatal(err)
 	//}
-	//fmt.Println("Finalized tx: ", hexutils.BytesToHex(finalizedTx))
+	//fmt.Println("Finalized tx: ", hexutil.Encode(finalizedTx))
 }

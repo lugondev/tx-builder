@@ -1,12 +1,12 @@
-package bitcoin_test
+package chain_test
 
 import (
-	"github.com/lugondev/tx-builder/blockchain/bitcoin"
+	"github.com/lugondev/tx-builder/blockchain/bitcoin/chain"
 	"testing"
 )
 
 func TestChainFeeRate(t *testing.T) {
-	feeRate, err := bitcoin.SuggestFeeRate()
+	feeRate, err := chain.SuggestFeeRate()
 	if err != nil {
 		t.Fatal(err)
 	}
