@@ -2,13 +2,13 @@ package builder
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/utxo"
 	"github.com/lugondev/tx-builder/pkg/client"
 	"github.com/lugondev/tx-builder/pkg/common"
-	"github.com/status-im/keycard-go/hexutils"
 	"testing"
 )
 
@@ -38,18 +38,11 @@ func TestBuilderSignExternal(t *testing.T) {
 		SetPrivKey(wif.PrivKey).
 		SweepTo("tb1pr375lf8f88dzkxhhecpqarp9w5580eysuycu40czz8s2phd86gss9rwnaf").
 		SetFeeRate(1000).
-		//SetChangeSource(builder.SourceAddressInfo.Address).
-		//SetOutputs([]*Output{
-		//	{
-		//		Address: "n47m9mEe4vXHvgWfXFZZit38NSranTwC6f",
-		//		Amount:  rand.Int63n(200) + 1500,
-		//	},
-		//}).
 		Build()
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fmt.Println("tx: ", hexutils.BytesToHex(signedTx))
+	fmt.Println("tx: ", hex.EncodeToString(signedTx))
 }

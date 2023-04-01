@@ -1,6 +1,7 @@
 package author
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -8,7 +9,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin"
 	"github.com/lugondev/tx-builder/blockchain/bitcoin/txscript"
-	"github.com/status-im/keycard-go/hexutils"
 )
 
 var _ SecretsSource = (*MemorySecretStore)(nil)
@@ -55,7 +55,7 @@ func (m MemorySecretStore) Sign(pubkey []byte, data []byte) ([]byte, error) {
 	}
 	//sig := sig1.Serialize()
 	fmt.Println("len sig", len(sig))
-	fmt.Println("hex sig", hexutils.BytesToHex(sig))
+	fmt.Println("hex sig", hex.EncodeToString(sig))
 	return sig, nil
 }
 

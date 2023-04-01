@@ -20,7 +20,6 @@ require (
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/json-iterator/go v1.1.12
 	github.com/samber/lo v1.37.0
-	github.com/status-im/keycard-go v0.2.0
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.5.0
