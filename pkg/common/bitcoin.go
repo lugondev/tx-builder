@@ -3,7 +3,7 @@ package common
 import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/lugondev/tx-builder/blockchain/bitcoin/txscript"
+	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/txscript"
 	"strings"
 )
 
@@ -26,9 +26,9 @@ type BTCAddressType string
 
 const (
 	Nested  BTCAddressType = "nested"
-	Legacy                 = "legacy"
-	Segwit                 = "segwit"
-	Taproot                = "taproot"
+	Legacy  BTCAddressType = "legacy"
+	Segwit  BTCAddressType = "segwit"
+	Taproot BTCAddressType = "taproot"
 )
 
 var BTCAddressTypes = []BTCAddressInfo{
