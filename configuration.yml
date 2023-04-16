@@ -1,0 +1,28 @@
+db:
+  host: 127.0.0.1
+  port: 5432
+  database: wallets-builder
+  user: root
+  password: secret
+  sslMode: disable
+
+server:
+  port: 8001
+
+auth:
+  jwt:
+    issuer-url: https://auth.bams.dev/
+    audience: https://bams.dev/investment
+    orchestrate:
+      claims: https://bams.dev/rbac
+
+key:
+  manager:
+    url: http://0.0.0.0:8080
+    store:
+      name: wallet-signer
+    api:
+      key: Z3Vlc3QtdXNlcg==
+multi:
+  tenancy:
+    enabled: true

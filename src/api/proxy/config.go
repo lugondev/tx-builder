@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lugondev/tx-builder/pkg/toolkit/app"
 	"github.com/lugondev/tx-builder/pkg/toolkit/app/multitenancy"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -30,7 +29,6 @@ var (
 )
 
 type Config struct {
-	App           *app.Config
 	ProxyCacheTTL *time.Duration
 	Multitenancy  bool
 }

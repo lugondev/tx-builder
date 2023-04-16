@@ -6,8 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
-type Account struct {
-	Alias               string
+type Wallet struct {
 	PublicKey           hexutil.Bytes
 	CompressedPublicKey hexutil.Bytes
 	TenantID            string

@@ -6,8 +6,8 @@ import (
 	quorumkeymanager "github.com/lugondev/tx-builder/src/infra/signer-key-manager/http"
 )
 
-type TopicConfig struct {
-	Sender string
+type AppConfig struct {
+	Port string
 }
 
 type Config struct {
@@ -15,5 +15,5 @@ type Config struct {
 	Multitenancy bool
 	Proxy        *proxy.Config
 	QKM          *quorumkeymanager.Config
-	KafkaTopics  *TopicConfig
+	App          *AppConfig
 }

@@ -8,26 +8,22 @@ import (
 )
 
 type Account struct {
-	tableName struct{} `pg:"accounts"` // nolint:unused,structcheck // reason
+	tableName struct{} `pg:"wallets"` // nolint:unused,structcheck // reason
 
 	ID                  int
-	Alias               string
-	Address             string
 	PublicKey           string
 	CompressedPublicKey string
 	TenantID            string
 	OwnerID             string
 	Attributes          map[string]string
-	// TODO add internal labels to store accountID
-	StoreID string
+	StoreID             string
 
 	CreatedAt time.Time `pg:"default:now()"`
 	UpdatedAt time.Time `pg:"default:now()"`
 }
 
-func NewAccount(account *entities.Account) *Account {
+func NewAccount(account *entities.Wallet) *Account {
 	return &Account{
-		Alias:               account.Alias,
 		PublicKey:           account.PublicKey.String(),
 		CompressedPublicKey: account.CompressedPublicKey.String(),
 		TenantID:            account.TenantID,
@@ -39,8 +35,8 @@ func NewAccount(account *entities.Account) *Account {
 	}
 }
 
-func NewAccounts(accounts []*Account) []*entities.Account {
-	res := []*entities.Account{}
+func NewAccounts(accounts []*Account) []*entities.Wallet {
+	var res []*entities.Wallet
 	for _, acc := range accounts {
 		res = append(res, acc.ToEntity())
 	}
@@ -48,9 +44,8 @@ func NewAccounts(accounts []*Account) []*entities.Account {
 	return res
 }
 
-func (acc *Account) ToEntity() *entities.Account {
-	return &entities.Account{
-		Alias:               acc.Alias,
+func (acc *Account) ToEntity() *entities.Wallet {
+	return &entities.Wallet{
 		PublicKey:           hexutil.MustDecode(acc.PublicKey),
 		CompressedPublicKey: hexutil.MustDecode(acc.CompressedPublicKey),
 		TenantID:            acc.TenantID,

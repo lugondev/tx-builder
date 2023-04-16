@@ -19,7 +19,7 @@ func New(key string) *Key {
 	}
 }
 
-// Parse and verify the validity of the Token (UUID or Access) and return a struct for a JWT (JSON Web Token)
+// Check Parse and verify the validity of the Token (UUID or Access) and return a struct for a JWT (JSON Web Token)
 func (checker *Key) Check(ctx context.Context) (*multitenancy.UserInfo, error) {
 	if checker == nil || checker.key == "" {
 		return nil, nil

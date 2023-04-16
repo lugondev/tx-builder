@@ -25,20 +25,17 @@ func NewUpdateAccountUseCase(db store.DB) usecases.UpdateAccountUseCase {
 	}
 }
 
-func (uc *updateAccountUseCase) Execute(ctx context.Context, acc *entities.Account, userInfo *multitenancy.UserInfo) (*entities.Account, error) {
-	ctx = log.WithFields(ctx, log.Field("address", acc.CompressedPublicKey))
+func (uc *updateAccountUseCase) Execute(ctx context.Context, acc *entities.Wallet, userInfo *multitenancy.UserInfo) (*entities.Wallet, error) {
+	ctx = log.WithFields(ctx, log.Field("pubkey", acc.PublicKey))
 	logger := uc.logger.WithContext(ctx)
 
-	curAcc, err := uc.db.Account().FindOneByAddress(ctx, acc.CompressedPublicKey.String(), userInfo.AllowedTenants, userInfo.Username)
+	curAcc, err := uc.db.Account().FindOneByPubkey(ctx, acc.PublicKey.String(), userInfo.AllowedTenants, userInfo.Username)
 	if err != nil {
 		return nil, errors.FromError(err).ExtendComponent(updateAccountComponent)
 	}
 
 	if acc.Attributes != nil {
 		curAcc.Attributes = acc.Attributes
-	}
-	if acc.Alias != "" {
-		curAcc.Alias = acc.Alias
 	}
 	if acc.StoreID != "" {
 		curAcc.StoreID = acc.StoreID

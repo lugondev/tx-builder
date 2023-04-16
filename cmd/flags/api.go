@@ -30,5 +30,8 @@ func NewAPIConfig(vipr *viper.Viper) *api.Config {
 		Multitenancy: vipr.GetBool(multitenancy.EnabledViperKey),
 		Proxy:        proxy.NewConfig(),
 		QKM:          NewQKMConfig(vipr),
+		App: &api.AppConfig{
+			Port: vipr.GetString(app.HttpPortViperKey),
+		},
 	}
 }

@@ -18,17 +18,17 @@ type AccountUseCases interface {
 }
 
 type GetAccountUseCase interface {
-	Execute(ctx context.Context, pubkey string, userInfo *multitenancy.UserInfo) (*entities.Account, error)
+	Execute(ctx context.Context, pubkey string, userInfo *multitenancy.UserInfo) (*entities.Wallet, error)
 }
 
 type CreateAccountUseCase interface {
-	Execute(ctx context.Context, identity *entities.Account, privateKey hexutil.Bytes, chainName string, userInfo *multitenancy.UserInfo) (*entities.Account, error)
+	Execute(ctx context.Context, identity *entities.Wallet, privateKey hexutil.Bytes, userInfo *multitenancy.UserInfo) (*entities.Wallet, error)
 }
 
 type SearchAccountsUseCase interface {
-	Execute(ctx context.Context, filters *entities.AccountFilters, userInfo *multitenancy.UserInfo) ([]*entities.Account, error)
+	Execute(ctx context.Context, filters *entities.AccountFilters, userInfo *multitenancy.UserInfo) ([]*entities.Wallet, error)
 }
 
 type UpdateAccountUseCase interface {
-	Execute(ctx context.Context, identity *entities.Account, userInfo *multitenancy.UserInfo) (*entities.Account, error)
+	Execute(ctx context.Context, identity *entities.Wallet, userInfo *multitenancy.UserInfo) (*entities.Wallet, error)
 }

@@ -11,17 +11,12 @@ func init() {
 	viper.SetDefault(hostnameViperKey, hostnameDefault)
 	_ = viper.BindEnv(hostnameViperKey, hostnameEnv)
 
-	viper.SetDefault(httpPortViperKey, httpPortDefault)
-	_ = viper.BindEnv(httpPortViperKey, httpPortEnv)
+	viper.SetDefault(HttpPortViperKey, httpPortDefault)
+	_ = viper.BindEnv(HttpPortViperKey, httpPortEnv)
 
 	viper.SetDefault(accessLogEnabledKey, accessLogEnabledDefault)
 	_ = viper.BindEnv(accessLogEnabledKey, accessLogEnabledEnv)
 
-	viper.SetDefault(metricsHostnameViperKey, metricsHostnameDefault)
-	_ = viper.BindEnv(metricsHostnameViperKey, metricsHostnameEnv)
-
-	viper.SetDefault(metricsPortViperKey, metricsPortDefault)
-	_ = viper.BindEnv(metricsPortViperKey, metricsPortEnv)
 }
 
 const (
@@ -41,7 +36,7 @@ Environment variable: %q`, hostnameEnv)
 
 const (
 	httpPortFlag     = "rest-port"
-	httpPortViperKey = "rest.port"
+	HttpPortViperKey = "rest.port"
 	httpPortDefault  = 8011
 	httpPortEnv      = "REST_PORT"
 )
@@ -51,37 +46,7 @@ func port(f *pflag.FlagSet) {
 	desc := fmt.Sprintf(`Port to expose REST services
 Environment variable: %q`, httpPortEnv)
 	f.Uint(httpPortFlag, httpPortDefault, desc)
-	_ = viper.BindPFlag(httpPortViperKey, f.Lookup(httpPortFlag))
-}
-
-const (
-	metricsHostnameFlag     = "metrics-hostname"
-	metricsHostnameViperKey = "metrics.hostname"
-	metricsHostnameDefault  = ""
-	metricsHostnameEnv      = "METRICS_HOSTNAME"
-)
-
-// metricsHostname register a flag for metrics server hostname
-func metricsHostname(f *pflag.FlagSet) {
-	desc := fmt.Sprintf(`Hostname to expose metrics services
-Environment variable: %q`, metricsHostnameEnv)
-	f.String(metricsHostnameFlag, metricsHostnameDefault, desc)
-	_ = viper.BindPFlag(metricsHostnameViperKey, f.Lookup(metricsHostnameFlag))
-}
-
-const (
-	metricsPortFlag     = "metrics-port"
-	metricsPortViperKey = "metrics.port"
-	metricsPortDefault  = 8082
-	metricsPortEnv      = "METRICS_PORT"
-)
-
-// MetricsPort register a flag for metrics server port
-func metricsPort(f *pflag.FlagSet) {
-	desc := fmt.Sprintf(`Port to expose metrics services
-Environment variable: %q`, metricsPortEnv)
-	f.Uint(metricsPortFlag, metricsPortDefault, desc)
-	_ = viper.BindPFlag(metricsPortViperKey, f.Lookup(metricsPortFlag))
+	_ = viper.BindPFlag(HttpPortViperKey, f.Lookup(httpPortFlag))
 }
 
 const (
@@ -102,13 +67,4 @@ func Flags(f *pflag.FlagSet) {
 	hostname(f)
 	port(f)
 	accessLogEnabled(f)
-}
-
-func MetricFlags(f *pflag.FlagSet) {
-	metricsHostname(f)
-	metricsPort(f)
-}
-
-func url(hostname string, port uint) string {
-	return fmt.Sprintf("%s:%d", hostname, port)
 }

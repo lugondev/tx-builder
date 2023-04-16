@@ -3,10 +3,9 @@ package accounts
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/md5"
-	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/lugondev/tx-builder/pkg/utils"
 
 	qkm "github.com/lugondev/tx-builder/src/infra/signer-key-manager/http"
 
@@ -48,27 +47,24 @@ func NewCreateAccountUseCase(
 	}
 }
 
-func (uc *createAccountUseCase) Execute(ctx context.Context, acc *entities.Account, privateKey hexutil.Bytes, chainName string,
-	userInfo *multitenancy.UserInfo) (*entities.Account, error) {
-	ctx = log.WithFields(ctx, log.Field("alias", acc.Alias))
+func (uc *createAccountUseCase) Execute(ctx context.Context, acc *entities.Wallet, privateKey hexutil.Bytes, userInfo *multitenancy.UserInfo) (*entities.Wallet, error) {
 	logger := uc.logger.WithContext(ctx)
-
 	logger.Debug("creating new wallet")
 
 	accounts, err := uc.searchUC.Execute(ctx,
-		&entities.AccountFilters{Aliases: []string{acc.Alias}, TenantID: userInfo.TenantID},
+		&entities.AccountFilters{ID: 9999, TenantID: userInfo.TenantID, OwnerID: userInfo.Username},
 		userInfo)
 	if err != nil {
 		return nil, errors.FromError(err).ExtendComponent(createAccountComponent)
 	}
 
 	if len(accounts) > 0 {
-		errMsg := "alias already exists"
+		errMsg := "wallet already exists"
 		logger.Error(errMsg)
 		return nil, errors.AlreadyExistsError(errMsg).ExtendComponent(createAccountComponent)
 	}
 
-	var accountID = generateKeyID(userInfo.TenantID, acc.Alias)
+	var accountID = utils.GenerateKeyID()
 	var resp *qkmtypes.WalletResponse
 	if privateKey != nil {
 		importedAccount, der := NewAccountFromPrivateKey(privateKey.String())
@@ -77,7 +73,7 @@ func (uc *createAccountUseCase) Execute(ctx context.Context, acc *entities.Accou
 			return nil, errors.InvalidParameterError(der.Error()).ExtendComponent(createAccountComponent)
 		}
 
-		existingAcc, der := uc.db.Account().FindOneByAddress(ctx, importedAccount.Address.Hex(), userInfo.AllowedTenants, userInfo.Username)
+		existingAcc, der := uc.db.Account().FindOneByPubkey(ctx, importedAccount.Address.Hex(), userInfo.AllowedTenants, userInfo.Username)
 		if existingAcc != nil {
 			errMsg := "account already exists"
 			logger.Error(errMsg)
@@ -138,14 +134,4 @@ func NewAccountFromPrivateKey(priv string) (*Account, error) {
 		priv:    prv,
 		Address: crypto.PubkeyToAddress(prv.PublicKey),
 	}, nil
-}
-
-func generateKeyID(tenantID, alias string) string {
-	//if alias == "" {
-	//	return utils.RandString(20)
-	//}
-
-	// The goal is to generate an unique ID to prevent duplicated aliases using md5 it generates values compliant
-	// with AKV and AWS which requires regex [a-zA-z]+$
-	return fmt.Sprintf("%x", md5.Sum([]byte(tenantID+alias)))
 }

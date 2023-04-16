@@ -180,7 +180,7 @@ var availableSSLModes = []string{
 
 const (
 	dbTLSSSLModeFlag     = "db-sslmode"
-	DBTLSSSLModeViperKey = "db.tls.sslmode"
+	DBTLSSSLModeViperKey = "db.tls.sslMode"
 	dbTLSSSLModeDefault  = disableSSLMode
 	dbTLSSSLModeEnv      = "DB_TLS_SSLMODE"
 )

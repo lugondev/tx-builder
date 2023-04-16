@@ -1,18 +1,15 @@
 package formatters
 
 import (
-	"net/http"
-	"strings"
-
 	"github.com/lugondev/tx-builder/src/api/service/types"
 	infra "github.com/lugondev/tx-builder/src/infra/api"
+	"net/http"
 
 	"github.com/lugondev/tx-builder/src/entities"
 )
 
-func FormatCreateAccountRequest(req *types.CreateAccountRequest, defaultStoreID string) *entities.Account {
-	acc := &entities.Account{
-		Alias:      req.Alias,
+func FormatCreateAccountRequest(req *types.CreateAccountRequest, defaultStoreID string) *entities.Wallet {
+	acc := &entities.Wallet{
 		Attributes: req.Attributes,
 		StoreID:    req.StoreID,
 	}
@@ -24,9 +21,8 @@ func FormatCreateAccountRequest(req *types.CreateAccountRequest, defaultStoreID 
 	return acc
 }
 
-func FormatImportAccountRequest(req *types.ImportAccountRequest, defaultStoreID string) *entities.Account {
-	acc := &entities.Account{
-		Alias:      req.Alias,
+func FormatImportAccountRequest(req *types.ImportAccountRequest, defaultStoreID string) *entities.Wallet {
+	acc := &entities.Wallet{
 		Attributes: req.Attributes,
 		StoreID:    req.StoreID,
 	}
@@ -38,17 +34,15 @@ func FormatImportAccountRequest(req *types.ImportAccountRequest, defaultStoreID 
 	return acc
 }
 
-func FormatUpdateAccountRequest(req *types.UpdateAccountRequest) *entities.Account {
-	return &entities.Account{
-		Alias:      req.Alias,
+func FormatUpdateAccountRequest(req *types.UpdateAccountRequest) *entities.Wallet {
+	return &entities.Wallet{
 		Attributes: req.Attributes,
 		StoreID:    req.StoreID,
 	}
 }
 
-func FormatAccountResponse(iden *entities.Account) *types.AccountResponse {
+func FormatAccountResponse(iden *entities.Wallet) *types.AccountResponse {
 	return &types.AccountResponse{
-		Alias:               iden.Alias,
 		Attributes:          iden.Attributes,
 		PublicKey:           iden.PublicKey.String(),
 		CompressedPublicKey: iden.CompressedPublicKey.String(),
@@ -62,11 +56,6 @@ func FormatAccountResponse(iden *entities.Account) *types.AccountResponse {
 
 func FormatAccountFilterRequest(req *http.Request) (*entities.AccountFilters, error) {
 	filters := &entities.AccountFilters{}
-
-	qAliases := req.URL.Query().Get("aliases")
-	if qAliases != "" {
-		filters.Aliases = strings.Split(qAliases, ",")
-	}
 
 	if err := infra.GetValidator().Struct(filters); err != nil {
 		return nil, err

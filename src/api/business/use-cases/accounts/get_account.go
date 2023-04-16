@@ -25,11 +25,11 @@ func NewGetAccountUseCase(db store.DB) usecases.GetAccountUseCase {
 	}
 }
 
-func (uc *getAccountUseCase) Execute(ctx context.Context, pubkey string, userInfo *multitenancy.UserInfo) (*entities.Account, error) {
-	ctx = log.WithFields(ctx, log.Field("address", pubkey))
+func (uc *getAccountUseCase) Execute(ctx context.Context, pubkey string, userInfo *multitenancy.UserInfo) (*entities.Wallet, error) {
+	ctx = log.WithFields(ctx, log.Field("pubkey", pubkey))
 	logger := uc.logger.WithContext(ctx)
 
-	acc, err := uc.db.Account().FindOneByAddress(ctx, pubkey, userInfo.AllowedTenants, userInfo.Username)
+	acc, err := uc.db.Account().FindOneByPubkey(ctx, pubkey, userInfo.AllowedTenants, userInfo.Username)
 	if err != nil {
 		return nil, errors.FromError(err).ExtendComponent(getAccountComponent)
 	}

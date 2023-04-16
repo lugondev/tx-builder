@@ -102,7 +102,7 @@ func (u *UserInfo) ImpersonateTenant(tenantID string) error {
 	return nil
 }
 
-// Feature restricted only to internal http request via API-KEY
+// ImpersonateUsername Feature restricted only to internal http request via API-KEY
 func (u *UserInfo) ImpersonateUsername(username string) error {
 	if username == "" {
 		return nil

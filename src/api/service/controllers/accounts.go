@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/lugondev/tx-builder/pkg/utils"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -35,9 +36,9 @@ func (c *AccountsController) Append(router *mux.Router) {
 	router.Methods(http.MethodGet).Path("/accounts").HandlerFunc(c.search)
 	router.Methods(http.MethodPost).Path("/accounts").HandlerFunc(c.create)
 	router.Methods(http.MethodPost).Path("/accounts/import").HandlerFunc(c.importKey)
-	router.Methods(http.MethodGet).Path("/accounts/{address}").HandlerFunc(c.getOne)
-	router.Methods(http.MethodPatch).Path("/accounts/{address}").HandlerFunc(c.update)
-	router.Methods(http.MethodPost).Path("/accounts/{address}/sign-message").HandlerFunc(c.signMessage)
+	router.Methods(http.MethodGet).Path("/accounts/{pubkey}").HandlerFunc(c.getOne)
+	router.Methods(http.MethodPatch, http.MethodPut).Path("/accounts/{pubkey}").HandlerFunc(c.update)
+	router.Methods(http.MethodPost).Path("/accounts/{pubkey}/sign-message").HandlerFunc(c.signMessage)
 	//router.Methods(http.MethodPost).Path("/accounts/{address}/sign-typed-data").HandlerFunc(c.signTypedData)
 	//router.Methods(http.MethodPost).Path("/accounts/verify-message").HandlerFunc(c.verifyMessageSignature)
 	//router.Methods(http.MethodPost).Path("/accounts/verify-typed-data").HandlerFunc(c.verifyTypedDataSignature)
@@ -67,8 +68,7 @@ func (c *AccountsController) create(rw http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	acc, err := c.ucs.Create().Execute(ctx, formatters.FormatCreateAccountRequest(req, c.storeName), nil, req.Chain,
-		multitenancy.UserInfoValue(ctx))
+	acc, err := c.ucs.Create().Execute(ctx, formatters.FormatCreateAccountRequest(req, c.storeName), nil, multitenancy.UserInfoValue(ctx))
 	if err != nil {
 		infra.WriteHTTPErrorResponse(rw, err)
 		return
@@ -93,12 +93,12 @@ func (c *AccountsController) getOne(rw http.ResponseWriter, request *http.Reques
 	rw.Header().Set("Content-Type", "application/json")
 	ctx := request.Context()
 
-	pubkey := mux.Vars(request)["pubkey"] //utils.ParseHexToMixedCaseEthAddress(mux.Vars(request)["address"])
-	//if err != nil {
-	//	infra.WriteError(rw, err.Error(), http.StatusBadRequest)
-	//	return
-	//}
-
+	pubkey, err := utils.ParseHexToPublicKey(mux.Vars(request)["pubkey"])
+	if err != nil {
+		infra.WriteError(rw, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Println("Get account request: ", pubkey)
 	acc, err := c.ucs.Get().Execute(ctx, pubkey, multitenancy.UserInfoValue(ctx))
 	if err != nil {
 		infra.WriteHTTPErrorResponse(rw, err)
@@ -124,7 +124,6 @@ func (c *AccountsController) getOne(rw http.ResponseWriter, request *http.Reques
 func (c *AccountsController) search(rw http.ResponseWriter, request *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	ctx := request.Context()
-
 	filters, err := formatters.FormatAccountFilterRequest(request)
 	if err != nil {
 		infra.WriteError(rw, err.Error(), http.StatusBadRequest)
@@ -137,7 +136,7 @@ func (c *AccountsController) search(rw http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	response := []*api.AccountResponse{}
+	var response []*api.AccountResponse
 	for _, acc := range accs {
 		response = append(response, formatters.FormatAccountResponse(acc))
 	}
@@ -171,8 +170,7 @@ func (c *AccountsController) importKey(rw http.ResponseWriter, request *http.Req
 		return
 	}
 
-	acc, err := c.ucs.Create().Execute(ctx, formatters.FormatImportAccountRequest(req, c.storeName), req.PrivateKey, req.Chain,
-		multitenancy.UserInfoValue(ctx))
+	acc, err := c.ucs.Create().Execute(ctx, formatters.FormatImportAccountRequest(req, c.storeName), req.PrivateKey, multitenancy.UserInfoValue(ctx))
 	if err != nil {
 		infra.WriteHTTPErrorResponse(rw, err)
 		return
@@ -207,15 +205,15 @@ func (c *AccountsController) update(rw http.ResponseWriter, request *http.Reques
 		return
 	}
 
-	acc := formatters.FormatUpdateAccountRequest(accRequest)
-	pubkey := mux.Vars(request)["pubkey"] //utils.ParseHexToMixedCaseEthAddress(mux.Vars(request)["address"])
-	//if err != nil {
-	//	infra.WriteError(rw, err.Error(), http.StatusBadRequest)
-	//	return
-	//}
-	acc.PublicKey = common.FromHex(pubkey)
+	updateAccountRequest := formatters.FormatUpdateAccountRequest(accRequest)
+	pubkey, err := utils.ParseHexToPublicKey(mux.Vars(request)["pubkey"])
+	if err != nil {
+		infra.WriteError(rw, err.Error(), http.StatusBadRequest)
+		return
+	}
+	updateAccountRequest.PublicKey = common.FromHex(pubkey)
 
-	accRes, err := c.ucs.Update().Execute(ctx, acc, multitenancy.UserInfoValue(ctx))
+	accRes, err := c.ucs.Update().Execute(ctx, updateAccountRequest, multitenancy.UserInfoValue(ctx))
 
 	if err != nil {
 		infra.WriteHTTPErrorResponse(rw, err)
@@ -249,11 +247,11 @@ func (c *AccountsController) signMessage(rw http.ResponseWriter, request *http.R
 		return
 	}
 
-	pubkey := mux.Vars(request)["pubkey"] //utils.ParseHexToMixedCaseEthAddress(mux.Vars(request)["address"])
-	//if err != nil {
-	//	infra.WriteError(rw, err.Error(), http.StatusBadRequest)
-	//	return
-	//}
+	pubkey, err := utils.ParseHexToPublicKey(mux.Vars(request)["pubkey"])
+	if err != nil {
+		infra.WriteError(rw, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	_, err = c.ucs.Get().Execute(ctx, pubkey, multitenancy.UserInfoValue(ctx))
 	if err != nil {

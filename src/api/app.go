@@ -19,5 +19,5 @@ func NewAPI(
 ) (*controllers.Builder, error) {
 
 	ucs := builder.NewUseCases(postgresstore.New(db), keyManagerClient)
-	return controllers.NewBuilder(ucs, keyManagerClient, qkmStoreID), nil
+	return controllers.NewBuilder(cfg.Multitenancy, ucs, keyManagerClient, qkmStoreID, jwt, key), nil
 }

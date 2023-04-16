@@ -2,17 +2,18 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/lugondev/tx-builder/src/api/service/controllers"
-	"net/http"
-	"time"
-
 	authjwt "github.com/lugondev/tx-builder/pkg/toolkit/app/auth/jwt"
 	authkey "github.com/lugondev/tx-builder/pkg/toolkit/app/auth/key"
+	"github.com/lugondev/tx-builder/src/api/service/controllers"
 	"github.com/lugondev/tx-builder/src/infra/postgres/gopg"
 	qkmhttp "github.com/lugondev/tx-builder/src/infra/signer-key-manager/http"
 	nonclient "github.com/lugondev/tx-builder/src/infra/signer-key-manager/non-client"
 	"github.com/lugondev/wallet-signer-manager/pkg/client"
+	"net/http"
+	"time"
 )
 
 type Daemon struct {
@@ -43,7 +44,6 @@ func New(ctx context.Context, cfg *Config) (*Daemon, error) {
 		qkmClient,
 		cfg.QKM.StoreName,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -52,22 +52,23 @@ func New(ctx context.Context, cfg *Config) (*Daemon, error) {
 }
 
 func (d *Daemon) Run(ctx context.Context) error {
-	build, err := d.Build(ctx, "orchestrate.api", func(response *http.Response) error {
-		return nil
-	})
-	if err != nil {
-		return err
-	}
 	r := mux.NewRouter()
+	r = d.BuildRouter(r, "/v1")
 
-	r.Handle("/v1", build)
+	r.HandleFunc("/ok", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	})
+
+	appPort := d.GetConfig().App.Port
 	srv := &http.Server{
 		Handler: r,
-		Addr:    "127.0.0.1:8001",
+		Addr:    fmt.Sprintf(":%s", appPort),
 		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
+	fmt.Printf("server run port: %s\n", appPort)
+
 	return srv.ListenAndServe()
 }
 

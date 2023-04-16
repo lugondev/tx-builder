@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-pg/pg/v10"
 	"github.com/lugondev/tx-builder/src/infra/postgres"
 
 	"github.com/lugondev/tx-builder/pkg/errors"
@@ -28,7 +27,7 @@ func NewPGAccount(client postgres.Client) *PGAccount {
 	}
 }
 
-func (agent *PGAccount) Insert(ctx context.Context, account *entities.Account) (*entities.Account, error) {
+func (agent *PGAccount) Insert(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error) {
 	model := models.NewAccount(account)
 	model.CreatedAt = time.Now().UTC()
 	model.UpdatedAt = time.Now().UTC()
@@ -43,7 +42,7 @@ func (agent *PGAccount) Insert(ctx context.Context, account *entities.Account) (
 	return model.ToEntity(), nil
 }
 
-func (agent *PGAccount) Update(ctx context.Context, account *entities.Account) (*entities.Account, error) {
+func (agent *PGAccount) Update(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error) {
 	model := models.NewAccount(account)
 	model.UpdatedAt = time.Now().UTC()
 
@@ -65,13 +64,10 @@ func (agent *PGAccount) Update(ctx context.Context, account *entities.Account) (
 	return model.ToEntity(), nil
 }
 
-func (agent *PGAccount) Search(ctx context.Context, filters *entities.AccountFilters, tenants []string, ownerID string) ([]*entities.Account, error) {
+func (agent *PGAccount) Search(ctx context.Context, filters *entities.AccountFilters, tenants []string, ownerID string) ([]*entities.Wallet, error) {
 	var accounts []*models.Account
 
 	q := agent.client.ModelContext(ctx, &accounts)
-	if len(filters.Aliases) > 0 {
-		q = q.Where("alias in (?)", pg.In(filters.Aliases))
-	}
 	if filters.TenantID != "" {
 		q = q.Where("tenant_id = ?", filters.TenantID)
 	}
@@ -86,12 +82,12 @@ func (agent *PGAccount) Search(ctx context.Context, filters *entities.AccountFil
 	return models.NewAccounts(accounts), nil
 }
 
-func (agent *PGAccount) FindOneByAddress(ctx context.Context, address string, tenants []string, ownerID string) (*entities.Account, error) {
+func (agent *PGAccount) FindOneByPubkey(ctx context.Context, pubkey string, tenants []string, ownerID string) (*entities.Wallet, error) {
 	account := &models.Account{}
 
 	err := agent.client.
 		ModelContext(ctx, account).
-		Where("address = ?", address).
+		Where("public_key = ?", pubkey).
 		WhereAllowedTenants("", tenants).
 		WhereAllowedOwner("", ownerID).
 		SelectOne()
@@ -100,7 +96,7 @@ func (agent *PGAccount) FindOneByAddress(ctx context.Context, address string, te
 			return nil, errors.FromError(err).SetMessage("account not found")
 		}
 
-		errMsg := "failed to find one account by address"
+		errMsg := "failed to find one account by pubkey"
 		agent.logger.WithContext(ctx).WithError(err).Error(errMsg)
 		return nil, errors.FromError(err).SetMessage(errMsg)
 	}

@@ -6,8 +6,6 @@ import (
 	"github.com/lugondev/tx-builder/pkg/toolkit/app/multitenancy"
 )
 
-//go:generate mockgen -source=auth.go -destination=mock/mock.go -package=mock
-
 type Checker interface {
 	Check(ctx context.Context) (*multitenancy.UserInfo, error)
 }
