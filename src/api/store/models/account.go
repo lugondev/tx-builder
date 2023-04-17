@@ -7,7 +7,7 @@ import (
 	"github.com/lugondev/tx-builder/src/entities"
 )
 
-type Account struct {
+type Wallet struct {
 	tableName struct{} `pg:"wallets"` // nolint:unused,structcheck // reason
 
 	ID                  int
@@ -22,37 +22,39 @@ type Account struct {
 	UpdatedAt time.Time `pg:"default:now()"`
 }
 
-func NewAccount(account *entities.Wallet) *Account {
-	return &Account{
-		PublicKey:           account.PublicKey.String(),
-		CompressedPublicKey: account.CompressedPublicKey.String(),
-		TenantID:            account.TenantID,
-		OwnerID:             account.OwnerID,
-		StoreID:             account.StoreID,
-		Attributes:          account.Attributes,
-		CreatedAt:           account.CreatedAt,
-		UpdatedAt:           account.UpdatedAt,
+func NewWallet(wallet *entities.Wallet) *Wallet {
+	return &Wallet{
+		ID:                  wallet.ID,
+		PublicKey:           wallet.PublicKey.String(),
+		CompressedPublicKey: wallet.CompressedPublicKey.String(),
+		TenantID:            wallet.TenantID,
+		OwnerID:             wallet.OwnerID,
+		StoreID:             wallet.StoreID,
+		Attributes:          wallet.Attributes,
+		CreatedAt:           wallet.CreatedAt,
+		UpdatedAt:           wallet.UpdatedAt,
 	}
 }
 
-func NewAccounts(accounts []*Account) []*entities.Wallet {
+func NewWallets(wallets []*Wallet) []*entities.Wallet {
 	var res []*entities.Wallet
-	for _, acc := range accounts {
+	for _, acc := range wallets {
 		res = append(res, acc.ToEntity())
 	}
 
 	return res
 }
 
-func (acc *Account) ToEntity() *entities.Wallet {
+func (w *Wallet) ToEntity() *entities.Wallet {
 	return &entities.Wallet{
-		PublicKey:           hexutil.MustDecode(acc.PublicKey),
-		CompressedPublicKey: hexutil.MustDecode(acc.CompressedPublicKey),
-		TenantID:            acc.TenantID,
-		OwnerID:             acc.OwnerID,
-		StoreID:             acc.StoreID,
-		Attributes:          acc.Attributes,
-		CreatedAt:           acc.CreatedAt,
-		UpdatedAt:           acc.UpdatedAt,
+		ID:                  w.ID,
+		PublicKey:           hexutil.MustDecode(w.PublicKey),
+		CompressedPublicKey: hexutil.MustDecode(w.CompressedPublicKey),
+		TenantID:            w.TenantID,
+		OwnerID:             w.OwnerID,
+		StoreID:             w.StoreID,
+		Attributes:          w.Attributes,
+		CreatedAt:           w.CreatedAt,
+		UpdatedAt:           w.UpdatedAt,
 	}
 }

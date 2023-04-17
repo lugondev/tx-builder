@@ -25,7 +25,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/json-iterator/go v1.1.12
-	github.com/lugondev/wallet-signer-manager v0.1.4
+	github.com/lugondev/wallet-signer-manager v0.1.7
 	github.com/samber/lo v1.37.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0

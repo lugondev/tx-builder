@@ -28,7 +28,7 @@ func NewPGAccount(client postgres.Client) *PGAccount {
 }
 
 func (agent *PGAccount) Insert(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error) {
-	model := models.NewAccount(account)
+	model := models.NewWallet(account)
 	model.CreatedAt = time.Now().UTC()
 	model.UpdatedAt = time.Now().UTC()
 
@@ -43,7 +43,7 @@ func (agent *PGAccount) Insert(ctx context.Context, account *entities.Wallet) (*
 }
 
 func (agent *PGAccount) Update(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error) {
-	model := models.NewAccount(account)
+	model := models.NewWallet(account)
 	model.UpdatedAt = time.Now().UTC()
 
 	q := agent.client.ModelContext(ctx, model).
@@ -65,7 +65,7 @@ func (agent *PGAccount) Update(ctx context.Context, account *entities.Wallet) (*
 }
 
 func (agent *PGAccount) Search(ctx context.Context, filters *entities.AccountFilters, tenants []string, ownerID string) ([]*entities.Wallet, error) {
-	var accounts []*models.Account
+	var accounts []*models.Wallet
 
 	q := agent.client.ModelContext(ctx, &accounts)
 	if filters.TenantID != "" {
@@ -79,15 +79,15 @@ func (agent *PGAccount) Search(ctx context.Context, filters *entities.AccountFil
 		return nil, errors.FromError(err).SetMessage(errMsg)
 	}
 
-	return models.NewAccounts(accounts), nil
+	return models.NewWallets(accounts), nil
 }
 
 func (agent *PGAccount) FindOneByPubkey(ctx context.Context, pubkey string, tenants []string, ownerID string) (*entities.Wallet, error) {
-	account := &models.Account{}
+	account := &models.Wallet{}
 
 	err := agent.client.
 		ModelContext(ctx, account).
-		Where("public_key = ?", pubkey).
+		Where("compressed_public_key = ?", pubkey).
 		WhereAllowedTenants("", tenants).
 		WhereAllowedOwner("", ownerID).
 		SelectOne()

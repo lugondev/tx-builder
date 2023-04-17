@@ -93,7 +93,7 @@ func (c *AccountsController) getOne(rw http.ResponseWriter, request *http.Reques
 	rw.Header().Set("Content-Type", "application/json")
 	ctx := request.Context()
 
-	pubkey, err := utils.ParseHexToPublicKey(mux.Vars(request)["pubkey"])
+	pubkey, err := utils.ParseHexToCompressedPublicKey(mux.Vars(request)["pubkey"])
 	if err != nil {
 		infra.WriteError(rw, err.Error(), http.StatusBadRequest)
 		return
@@ -206,7 +206,7 @@ func (c *AccountsController) update(rw http.ResponseWriter, request *http.Reques
 	}
 
 	updateAccountRequest := formatters.FormatUpdateAccountRequest(accRequest)
-	pubkey, err := utils.ParseHexToPublicKey(mux.Vars(request)["pubkey"])
+	pubkey, err := utils.ParseHexToCompressedPublicKey(mux.Vars(request)["pubkey"])
 	if err != nil {
 		infra.WriteError(rw, err.Error(), http.StatusBadRequest)
 		return
@@ -247,7 +247,7 @@ func (c *AccountsController) signMessage(rw http.ResponseWriter, request *http.R
 		return
 	}
 
-	pubkey, err := utils.ParseHexToPublicKey(mux.Vars(request)["pubkey"])
+	pubkey, err := utils.ParseHexToCompressedPublicKey(mux.Vars(request)["pubkey"])
 	if err != nil {
 		infra.WriteError(rw, err.Error(), http.StatusBadRequest)
 		return

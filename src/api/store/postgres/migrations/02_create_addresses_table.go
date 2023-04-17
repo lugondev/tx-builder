@@ -11,7 +11,7 @@ func createAddressesTable(db migrations.DB) error {
 CREATE TABLE addresses (
 	id SERIAL PRIMARY KEY,
     wallet_id    SERIAL   NOT NULL,
-    wallet_type    varchar(10)   NOT NULL,
+    wallet_type    varchar(20)   NOT NULL,
     address    varchar(100)   NOT NULL,
 	created_at TIMESTAMPTZ DEFAULT (now() at time zone 'utc') NOT NULL, 
 	updated_at TIMESTAMPTZ DEFAULT (now() at time zone 'utc') NOT NULL

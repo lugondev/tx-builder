@@ -8,6 +8,7 @@ import (
 
 type DB interface {
 	Account() AccountAgent
+	Address() AddressAgent
 	RunInTransaction(ctx context.Context, persistFunc func(db DB) error) error
 }
 
@@ -16,4 +17,10 @@ type AccountAgent interface {
 	Update(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error)
 	FindOneByPubkey(ctx context.Context, pubkey string, tenants []string, ownerID string) (*entities.Wallet, error)
 	Search(ctx context.Context, filters *entities.AccountFilters, tenants []string, ownerID string) ([]*entities.Wallet, error)
+}
+
+type AddressAgent interface {
+	Insert(ctx context.Context, account *entities.Wallet) ([]*entities.Address, error)
+	//FindOneByPubkey(ctx context.Context, pubkey string, tenants []string, ownerID string) (*entities.Wallet, error)
+	//Search(ctx context.Context, filters *entities.AccountFilters, tenants []string, ownerID string) ([]*entities.Wallet, error)
 }

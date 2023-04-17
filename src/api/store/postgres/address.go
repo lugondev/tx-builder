@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"github.com/samber/lo"
 	"time"
 
 	"github.com/lugondev/tx-builder/src/infra/postgres"
@@ -13,36 +14,41 @@ import (
 	"github.com/lugondev/tx-builder/src/entities"
 )
 
-type PGAccount struct {
+type PGAddress struct {
 	client postgres.Client
 	logger *log.Logger
 }
 
-var _ store.AccountAgent = &PGAccount{}
+var _ store.AddressAgent = &PGAddress{}
 
-func NewPGAccount(client postgres.Client) *PGAccount {
-	return &PGAccount{
+func NewPGAddress(client postgres.Client) *PGAddress {
+	return &PGAddress{
 		client: client,
-		logger: log.NewLogger().SetComponent("data-agents.account"),
+		logger: log.NewLogger().SetComponent("data-agents.address"),
 	}
 }
 
-func (agent *PGAccount) Insert(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error) {
-	model := models.NewWallet(account)
-	model.CreatedAt = time.Now().UTC()
-	model.UpdatedAt = time.Now().UTC()
+func (agent *PGAddress) Insert(ctx context.Context, account *entities.Wallet) ([]*entities.Address, error) {
+	modelsAddresses := models.NewAddressesFromWallet(account)
 
-	err := agent.client.ModelContext(ctx, model).Insert()
-	if err != nil {
-		errMsg := "failed to insert account"
-		agent.logger.WithContext(ctx).WithError(err).Error(errMsg)
-		return nil, errors.FromError(err).SetMessage(errMsg)
+	for i := range modelsAddresses {
+		model := modelsAddresses[i]
+		model.CreatedAt = time.Now().UTC()
+		model.UpdatedAt = time.Now().UTC()
+		err := agent.client.ModelContext(ctx, model).Insert()
+		if err != nil {
+			errMsg := "failed to insert account"
+			agent.logger.WithContext(ctx).WithError(err).Error(errMsg)
+			return nil, errors.FromError(err).SetMessage(errMsg)
+		}
 	}
 
-	return model.ToEntity(), nil
+	return lo.Map(modelsAddresses, func(item *models.Address, _ int) *entities.Address {
+		return item.ToEntity()
+	}), nil
 }
 
-func (agent *PGAccount) Update(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error) {
+func (agent *PGAddress) Update(ctx context.Context, account *entities.Wallet) (*entities.Wallet, error) {
 	model := models.NewWallet(account)
 	model.UpdatedAt = time.Now().UTC()
 
@@ -64,7 +70,7 @@ func (agent *PGAccount) Update(ctx context.Context, account *entities.Wallet) (*
 	return model.ToEntity(), nil
 }
 
-func (agent *PGAccount) Search(ctx context.Context, filters *entities.AccountFilters, tenants []string, ownerID string) ([]*entities.Wallet, error) {
+func (agent *PGAddress) Search(ctx context.Context, filters *entities.AccountFilters, tenants []string, ownerID string) ([]*entities.Wallet, error) {
 	var accounts []*models.Wallet
 
 	q := agent.client.ModelContext(ctx, &accounts)
@@ -82,12 +88,12 @@ func (agent *PGAccount) Search(ctx context.Context, filters *entities.AccountFil
 	return models.NewWallets(accounts), nil
 }
 
-func (agent *PGAccount) FindOneByPubkey(ctx context.Context, pubkey string, tenants []string, ownerID string) (*entities.Wallet, error) {
+func (agent *PGAddress) FindOneByPubkey(ctx context.Context, pubkey string, tenants []string, ownerID string) (*entities.Wallet, error) {
 	account := &models.Wallet{}
 
 	err := agent.client.
 		ModelContext(ctx, account).
-		Where("public_key = ?", pubkey).
+		Where("compressed_public_key = ?", pubkey).
 		WhereAllowedTenants("", tenants).
 		WhereAllowedOwner("", ownerID).
 		SelectOne()

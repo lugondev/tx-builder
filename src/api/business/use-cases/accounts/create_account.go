@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lugondev/tx-builder/pkg/utils"
-
 	qkm "github.com/lugondev/tx-builder/src/infra/signer-key-manager/http"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -21,6 +20,7 @@ import (
 )
 
 const createAccountComponent = "use-cases.create-account"
+const createAddressesComponent = "use-cases.create-addresses"
 
 type createAccountUseCase struct {
 	db               store.DB
@@ -51,18 +51,19 @@ func (uc *createAccountUseCase) Execute(ctx context.Context, acc *entities.Walle
 	logger := uc.logger.WithContext(ctx)
 	logger.Debug("creating new wallet")
 
-	accounts, err := uc.searchUC.Execute(ctx,
-		&entities.AccountFilters{ID: 9999, TenantID: userInfo.TenantID, OwnerID: userInfo.Username},
-		userInfo)
-	if err != nil {
-		return nil, errors.FromError(err).ExtendComponent(createAccountComponent)
-	}
-
-	if len(accounts) > 0 {
-		errMsg := "wallet already exists"
-		logger.Error(errMsg)
-		return nil, errors.AlreadyExistsError(errMsg).ExtendComponent(createAccountComponent)
-	}
+	//accounts, err := uc.searchUC.Execute(ctx,
+	//	&entities.AccountFilters{ID: 9999, TenantID: userInfo.TenantID, OwnerID: userInfo.Username},
+	//	userInfo)
+	//if err != nil {
+	//	return nil, errors.FromError(err).ExtendComponent(createAccountComponent)
+	//}
+	//
+	//if len(accounts) > 0 {
+	//	errMsg := "wallet already exists"
+	//	logger.Error(errMsg)
+	//	return nil, errors.AlreadyExistsError(errMsg).ExtendComponent(createAccountComponent)
+	//}
+	var err error
 
 	var accountID = utils.GenerateKeyID()
 	var resp *qkmtypes.WalletResponse
@@ -119,8 +120,14 @@ func (uc *createAccountUseCase) Execute(ctx context.Context, acc *entities.Walle
 	if err != nil {
 		return nil, errors.FromError(err).ExtendComponent(createAccountComponent)
 	}
+	logger.WithField("wallet", resp.CompressedPublicKey).Info("wallet created successfully")
 
-	logger.WithField("address", resp.CompressedPublicKey).Info("wallet created successfully")
+	addresses, err := uc.db.Address().Insert(ctx, acc)
+	if err != nil {
+		return nil, errors.FromError(err).ExtendComponent(createAddressesComponent)
+	}
+	logger.WithField("addresses", len(addresses)).Info("addresses created successfully")
+
 	return acc, nil
 }
 

@@ -7,6 +7,7 @@ import (
 )
 
 type Wallet struct {
+	ID                  int
 	PublicKey           hexutil.Bytes
 	CompressedPublicKey hexutil.Bytes
 	TenantID            string
