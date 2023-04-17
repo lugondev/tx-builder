@@ -3,7 +3,6 @@ package http
 import (
 	"crypto/tls"
 	"github.com/lugondev/tx-builder/pkg/toolkit/app/http"
-
 	qkm "github.com/lugondev/wallet-signer-manager/pkg/client"
 )
 

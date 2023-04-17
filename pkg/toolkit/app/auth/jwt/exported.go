@@ -29,7 +29,6 @@ func Init(ctx context.Context) {
 		if cfg == nil {
 			logger.Fatalf("jwt: no identity provider issuer url provided")
 		}
-
 		validator, err := jose.NewValidator(cfg)
 		if err != nil {
 			logger.WithError(err).Fatalf("jwt: could not create jwt validator")

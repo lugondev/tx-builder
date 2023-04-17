@@ -265,14 +265,16 @@ func (c *AccountsController) signMessage(rw http.ResponseWriter, request *http.R
 	}
 
 	signature, err := c.keyManagerClient.Sign(request.Context(), qkmStoreID, pubkey, &qkmstoretypes.SignWalletRequest{
-		Data: payloadRequest.Data,
+		Data:     payloadRequest.Data,
+		TypeSign: payloadRequest.TypeSign,
 	})
 	if err != nil {
 		infra.WriteHTTPErrorResponse(rw, err)
 		return
 	}
-
-	_, _ = rw.Write([]byte(signature))
+	
+	//_, _ = rw.Write([]byte(signature))
+	_ = json.NewEncoder(rw).Encode(formatters.FormatSignatureResponse(payloadRequest, signature, pubkey))
 }
 
 // @Summary      Signs typed data using an existing account following the EIP-712 standard

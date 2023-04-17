@@ -2,7 +2,6 @@ package http
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net"
 	"net/http"
 
@@ -22,7 +21,7 @@ func NewClient(cfg *Config) *http.Client {
 	2. Attach Authorization header, only if Authentication was not set before
 	3. Retry on 429 responses
 	*/
-	fmt.Println("NewClient Authorization:", cfg.Authorization)
+
 	var middlewares []transport.Middleware
 	if cfg.Authorization != "" {
 		middlewares = append(middlewares, transport.NewAuthHeadersTransport(cfg.Authorization))
@@ -31,7 +30,7 @@ func NewClient(cfg *Config) *http.Client {
 	if cfg.AuthHeaderForward {
 		middlewares = append(middlewares, transport.NewContextAuthHeadersTransport())
 	}
-	fmt.Println("NewClient XAPIKey:", cfg.XAPIKey)
+
 	if cfg.XAPIKey != "" {
 		middlewares = append(middlewares, transport.NewXAPIKeyHeadersTransport(cfg.XAPIKey))
 	}

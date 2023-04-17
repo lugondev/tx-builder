@@ -18,7 +18,11 @@ import (
 
 type Builder struct {
 	accountsCtrl *AccountsController
-	jwt, key     auth.Checker
+	auth         Auth
+}
+
+type Auth struct {
+	checker      auth.Checker
 	multitenancy bool
 }
 
@@ -26,9 +30,10 @@ func NewBuilder(
 	multitenancy bool, ucs usecases.UseCases, keyManagerClient qkm.KeyManagerClient, qkmStoreID string,
 	jwt, key auth.Checker) *Builder {
 	return &Builder{
-		jwt:          jwt,
-		key:          key,
-		multitenancy: multitenancy,
+		auth: Auth{
+			checker:      auth.NewCombineCheckers(key, jwt),
+			multitenancy: multitenancy,
+		},
 		accountsCtrl: NewAccountsController(ucs, keyManagerClient, qkmStoreID),
 	}
 }
@@ -62,8 +67,7 @@ func (b *Builder) BuildRouter(router *mux.Router, subPath string) *mux.Router {
 
 func (b *Builder) AuthMiddlewareHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		fmt.Println("multitenancy", b.multitenancy)
-		if b.multitenancy {
+		if !b.auth.multitenancy {
 			userInfo := multitenancy.DefaultUser()
 			b.serveNext(rw, req.WithContext(multitenancy.WithUserInfo(req.Context(), userInfo)), h)
 			return
@@ -93,9 +97,9 @@ func (b *Builder) AuthMiddlewareHandler(h http.Handler) http.Handler {
 			authutils.GetUsernameHeaderValue(req),
 		)
 
-		userInfo, err := b.jwt.Check(authCtx)
+		userInfo, err := b.auth.checker.Check(authCtx)
 		if err != nil {
-			log.FromContext(authCtx).WithError(err).Errorf("unauthorized request")
+			log.FromContext(authCtx).WithError(err).Errorf("unauthorized request user info")
 			b.writeUnauthorized(rw, err)
 			return
 		}
@@ -113,7 +117,7 @@ func (b *Builder) AuthMiddlewareHandler(h http.Handler) http.Handler {
 		}
 
 		err = errors.UnauthorizedError("missing required credentials")
-		log.FromContext(authCtx).WithError(err).Errorf("unauthorized request")
+		log.FromContext(authCtx).WithError(err).Errorf("unauthorized request no auth info")
 		b.writeUnauthorized(rw, err)
 	})
 }

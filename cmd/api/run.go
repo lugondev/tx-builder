@@ -2,8 +2,6 @@ package api
 
 import (
 	"fmt"
-	authjwt "github.com/lugondev/tx-builder/pkg/toolkit/app/auth/jwt"
-	authkey "github.com/lugondev/tx-builder/pkg/toolkit/app/auth/key"
 	"github.com/lugondev/tx-builder/pkg/utils"
 	"os"
 
@@ -44,9 +42,6 @@ func run(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-
-	authjwt.Init(ctx)
-	authkey.Init(ctx)
 
 	if err := apiApp.Run(ctx); err != nil {
 		fmt.Println("err", err)

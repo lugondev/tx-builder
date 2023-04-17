@@ -28,7 +28,7 @@ func New(ctx context.Context, cfg *Config) (*Daemon, error) {
 		return nil, err
 	}
 
-	postgresClient, err := gopg.New("orchestrate.api", cfg.Postgres)
+	postgresClient, err := gopg.New("tx-builder.api", cfg.Postgres)
 	if err != nil {
 		return nil, err
 	}

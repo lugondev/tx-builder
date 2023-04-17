@@ -3,9 +3,6 @@ package http
 import (
 	"crypto/tls"
 	"time"
-
-	"github.com/lugondev/tx-builder/pkg/toolkit/app/auth/key"
-	"github.com/spf13/viper"
 )
 
 type Config struct {
@@ -36,10 +33,4 @@ func NewDefaultConfig() *Config {
 		InsecureSkipVerify:    false,
 		RetryAfterEnabled:     true,
 	}
-}
-
-func NewConfig(vipr *viper.Viper) *Config {
-	cfg := NewDefaultConfig()
-	cfg.XAPIKey = vipr.GetString(key.APIKeyViperKey)
-	return cfg
 }
