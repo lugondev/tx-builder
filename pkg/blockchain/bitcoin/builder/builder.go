@@ -11,7 +11,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	author2 "github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/author"
+	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/author"
 	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/chain"
 	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/utxo"
 	"github.com/lugondev/tx-builder/pkg/common"
@@ -35,8 +35,9 @@ func (t *TxBtc) SetPrivKey(privKey *btcec.PrivateKey) *TxBtc {
 		return nil
 	}
 
-	t.secretStore = author2.NewMemorySecretStore(map[string]*btcec.PrivateKey{
-		t.SourceAddressInfo.Address: privKey,
+	fmt.Println("pubkey set:", hexutil.Encode(t.pubkey.SerializeCompressed()))
+	t.secretStore = author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
+		hexutil.Encode(t.pubkey.SerializeCompressed()): privKey,
 	}, map[string][]byte{
 		t.SourceAddressInfo.Address: t.pubkey.SerializeCompressed(),
 	}, t.SourceAddressInfo.GetChainConfig())
@@ -63,11 +64,12 @@ func (t *TxBtc) SetPubkey(pubkey []byte) *TxBtc {
 	return t
 }
 
-func (t *TxBtc) SetSecretStore(pubkey []byte, secretStore *author2.SecretsSource) *TxBtc {
+func (t *TxBtc) SetSecretStore(pubkey []byte, secretStore *author.SecretsSource) *TxBtc {
 	if pubkey == nil || len(pubkey) == 0 {
 		return nil
 	}
-	t.secretStore = author2.NewMemorySecretStore(map[string]*btcec.PrivateKey{
+
+	t.secretStore = author.NewMemorySecretStore(map[string]*btcec.PrivateKey{
 		t.SourceAddressInfo.Address: nil,
 	}, map[string][]byte{
 		t.SourceAddressInfo.Address: pubkey,
@@ -112,7 +114,7 @@ func (t *TxBtc) SetUtxos(utxos []*utxo.UnspentTxOutput) *TxBtc {
 	return t
 }
 
-func (t *TxBtc) getFetchInputs() author2.InputSource {
+func (t *TxBtc) getFetchInputs() author.InputSource {
 	return func(target btcutil.Amount) (total btcutil.Amount, inputs []*wire.TxIn,
 		inputValues []btcutil.Amount, scripts [][]byte, err error) {
 
@@ -139,7 +141,7 @@ func (t *TxBtc) SetChangeSource(address string) *TxBtc {
 		return nil
 	}
 
-	t.changeSource = &author2.ChangeSource{
+	t.changeSource = &author.ChangeSource{
 		NewScript: func() ([]byte, error) {
 			return addressInfo.GetPayToAddrScript(), nil
 		},
@@ -167,7 +169,7 @@ func (t *TxBtc) Build() ([]byte, error) {
 		outputs = t.outputs
 	}
 
-	transaction, err := author2.NewUnsignedTransaction(outputs, btcutil.Amount(t.FeeRate), t.getFetchInputs(), t.changeSource)
+	transaction, err := author.NewUnsignedTransaction(outputs, btcutil.Amount(t.FeeRate), t.getFetchInputs(), t.changeSource)
 	if err != nil {
 		return nil, err
 	}

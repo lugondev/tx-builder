@@ -25,6 +25,7 @@ type BTCAddressInfo struct {
 type BTCAddressType string
 
 const (
+	Pubkey  BTCAddressType = "pubkey"
 	Nested  BTCAddressType = "nested"
 	Legacy  BTCAddressType = "legacy"
 	Segwit  BTCAddressType = "segwit"

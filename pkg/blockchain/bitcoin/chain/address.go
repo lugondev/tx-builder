@@ -5,6 +5,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	txscript2 "github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/txscript"
 	"github.com/lugondev/tx-builder/pkg/common"
 )
@@ -58,6 +59,7 @@ type KeyAddresses map[common.BTCAddressType]string
 
 func PubkeyToAddresses(pubkey *btcec.PublicKey, params *chaincfg.Params) KeyAddresses {
 	return KeyAddresses{
+		common.Pubkey:  hexutil.Encode(pubkey.SerializeCompressed()),
 		common.Nested:  must(PubkeyToScriptHash(pubkey, params)).EncodeAddress(),
 		common.Legacy:  must(PubkeyToPubKeyHash(pubkey, params)).EncodeAddress(),
 		common.Segwit:  must(PubkeyToSegwit(pubkey, params)).EncodeAddress(),

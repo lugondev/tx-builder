@@ -18,9 +18,9 @@ const privKey = "cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr"
 const toAddress = "tb1q5rvwj5fyh02ldstdk77ku0vc3g9utdq693tuet"
 
 func TestGetBalance(t *testing.T) {
-	wif, err := btcutil.DecodeWIF("cP2gB7hrFoE4AccbB1qyfcgmzDicZ8bkr3XB9GhYzMUEQNkQRRwr")
+	wif, _ := btcutil.DecodeWIF("KznpA63DPFrmHecASyL6sFmcRgrNT9oM8Ebso8mwq1dfJF3ZgZ3V")
 
-	builder, err := NewTxBtcBuilder(wif.SerializePubKey(), common.Legacy, &chaincfg.TestNet3Params)
+	builder, err := NewTxBtcBuilder(wif.SerializePubKey(), common.Segwit, &chaincfg.TestNet3Params)
 	if err != nil {
 		t.Fatal(err)
 	}

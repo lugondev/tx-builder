@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	common2 "github.com/ethereum/go-ethereum/common"
 	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/chain"
@@ -16,19 +17,19 @@ import (
 
 func TestBuilderBTCWallet(t *testing.T) {
 	//pubkey, err := btcec.ParsePubKey(common2.FromHex("03201d82ca8f8ebe6542459911a5275e8650504050af538d469fda12568c49ed7b"))
-	pubkey, err := btcec.ParsePubKey(common2.FromHex("037d418ddabdf94074dd9e11a7f297329f2bf3352d5df480ef3a8ceac87926db93"))
-	//pubkey, err := btcec.ParsePubKey(common2.FromHex("03282c5432b0b716e99caf54fafb5a83b41ee5213940b3daf178ad7e3ecd41ae8b"))
+	pubkey, err := btcec.ParsePubKey(common2.FromHex("02f564c5d9f932acbb0c81438f0e4389509f87383e22d4f203e0bb09c33135e86a"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	addressType := common.Taproot
+	addressType := common.Segwit
+	netParams := &chaincfg.MainNetParams
 
-	builder, err := NewTxBtcBuilder(pubkey.SerializeUncompressed(), addressType, &chaincfg.TestNet3Params)
+	builder, err := NewTxBtcBuilder(pubkey.SerializeUncompressed(), addressType, netParams)
 	if err != nil {
 		t.Fatal(err)
 	}
-	addresses := chain.PubkeyToAddresses(pubkey, &chaincfg.TestNet3Params)
-	t.Log("address legacy:", addresses[addressType])
+	addresses := chain.PubkeyToAddresses(pubkey, netParams)
+	t.Log("address:", addresses[addressType])
 
 	c := client.NewClient("https://blockstream.info", "", "", "")
 	utxoService := utxo.BlockStreamService{Client: c}
@@ -39,15 +40,17 @@ func TestBuilderBTCWallet(t *testing.T) {
 	}
 
 	fmt.Println("UTXOs: ", utxos.ToUTXOs().Len())
+	wif, _ := btcutil.DecodeWIF("cVacJiScoPMAugWKRwMU2HVUPE4PhcJLgxVCexieWEWcTiYC8bSn")
 
 	signedTx, err := builder.SetUtxos(*utxos.ToUTXOs()).
+		SetPrivKey(wif.PrivKey).
+		//SetSecretStore(pubkey.SerializeCompressed(), nil).
 		SetFeeRate(1000).
 		SetChangeSource(builder.SourceAddressInfo.Address).
-		SetSecretStore(pubkey.SerializeCompressed(), nil).
 		SetOutputs([]*Output{
 			{
 				Address: toAddress,
-				Amount:  rand.Int63n(200) + 300,
+				Amount:  rand.Int63n(200) + 100,
 			},
 		}).
 		Build()

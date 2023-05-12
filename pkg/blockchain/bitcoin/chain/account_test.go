@@ -18,6 +18,7 @@ func TestGetAddressFromSeed(t *testing.T) {
 	}
 	for i := 0; i < len(addresses); i++ {
 		pubkeyToAddress := addresses[i]
+		fmt.Println("pubkey: ", pubkeyToAddress[common.Pubkey])
 		fmt.Println("taproot address: ", pubkeyToAddress[common.Taproot])
 		fmt.Println("legacy address: ", pubkeyToAddress[common.Legacy])
 		fmt.Println("nested address: ", pubkeyToAddress[common.Nested])
@@ -59,7 +60,7 @@ func TestGetAddressFromPrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("private key: ", wif.String())
+	fmt.Printf("private key: %x\n", wif.PrivKey.Serialize())
 
 	privateKeyToAddresses(t, wif.PrivKey)
 }
@@ -70,6 +71,7 @@ func privateKeyToAddresses(t *testing.T, privKey *btcec.PrivateKey) {
 		t.Fatal(err)
 	}
 
+	fmt.Println("pubkey testnet3: ", (*addressesTestnet3)[common.Pubkey])
 	fmt.Println("taproot testnet3: ", (*addressesTestnet3)[common.Taproot])
 	fmt.Println("legacy testnet3: ", (*addressesTestnet3)[common.Legacy])
 	fmt.Println("nested testnet3: ", (*addressesTestnet3)[common.Nested])
@@ -80,6 +82,7 @@ func privateKeyToAddresses(t *testing.T, privKey *btcec.PrivateKey) {
 		t.Fatal(err)
 	}
 
+	fmt.Println("pubkey mainnet: ", (*addressesMainnet)[common.Pubkey])
 	fmt.Println("taproot mainnet: ", (*addressesMainnet)[common.Taproot])
 	fmt.Println("legacy mainnet: ", (*addressesMainnet)[common.Legacy])
 	fmt.Println("nested mainnet: ", (*addressesMainnet)[common.Nested])

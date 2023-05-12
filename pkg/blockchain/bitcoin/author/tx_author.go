@@ -14,7 +14,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet/txrules"
 	"github.com/btcsuite/btcwallet/wallet/txsizes"
-	txscript2 "github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/txscript"
+	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/txscript"
 )
 
 // SumOutputValues sums up the list of TxOuts and returns an Amount.
@@ -115,11 +115,11 @@ func NewUnsignedTransaction(outputs []*wire.TxOut, feeRatePerKb btcutil.Amount, 
 			switch {
 			// If this is a p2sh output, we assume this is a
 			// nested P2WKH.
-			case txscript2.IsPayToScriptHash(pkScript):
+			case txscript.IsPayToScriptHash(pkScript):
 				nested++
-			case txscript2.IsPayToWitnessPubKeyHash(pkScript):
+			case txscript.IsPayToWitnessPubKeyHash(pkScript):
 				p2wpkh++
-			case txscript2.IsPayToTaproot(pkScript):
+			case txscript.IsPayToTaproot(pkScript):
 				p2tr++
 			default:
 				p2pkh++
@@ -195,8 +195,8 @@ func (tx *AuthoredTx) RandomizeChangePosition() {
 // avoid unnecessary conversions from previous output scripts to Addresses.
 // This can not be done without modifications to the txscript package.
 type SecretsSource interface {
-	txscript2.KeyDB
-	txscript2.ScriptDB
+	txscript.KeyDB
+	txscript.ScriptDB
 	ChainParams() *chaincfg.Params
 }
 
@@ -213,7 +213,7 @@ func AddAllInputScripts(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []bt
 	}
 
 	inputs := tx.TxIn
-	hashCache := txscript2.NewTxSigHashes(tx, inputFetcher)
+	hashCache := txscript.NewTxSigHashes(tx, inputFetcher)
 	chainParams := secrets.ChainParams()
 
 	if len(inputs) != len(prevPkScripts) {
@@ -229,7 +229,7 @@ func AddAllInputScripts(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []bt
 		// witness program, then we'll need to use a modified signing
 		// function which generates both the sigScript, and the witness
 		// script.
-		case txscript2.IsPayToScriptHash(pkScript):
+		case txscript.IsPayToScriptHash(pkScript):
 			err := spendNestedWitnessPubKeyHash(
 				inputs[i], pkScript, int64(inputValues[i]),
 				chainParams, secrets, tx, hashCache, i,
@@ -238,7 +238,7 @@ func AddAllInputScripts(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []bt
 				return err
 			}
 
-		case txscript2.IsPayToWitnessPubKeyHash(pkScript):
+		case txscript.IsPayToWitnessPubKeyHash(pkScript):
 			err := spendWitnessKeyHash(
 				inputs[i], pkScript, int64(inputValues[i]),
 				chainParams, secrets, tx, hashCache, i,
@@ -247,7 +247,7 @@ func AddAllInputScripts(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []bt
 				return err
 			}
 
-		case txscript2.IsPayToTaproot(pkScript):
+		case txscript.IsPayToTaproot(pkScript):
 			err := spendTaprootKey(
 				inputs[i], pkScript, int64(inputValues[i]),
 				chainParams, secrets, tx, hashCache, i,
@@ -258,8 +258,8 @@ func AddAllInputScripts(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []bt
 
 		default:
 			sigScript := inputs[i].SignatureScript
-			script, err := txscript2.SignTxOutput(chainParams, tx, i,
-				pkScript, txscript2.SigHashAll, secrets, secrets,
+			script, err := txscript.SignTxOutput(chainParams, tx, i,
+				pkScript, txscript.SigHashAll, secrets, secrets,
 				sigScript)
 			if err != nil {
 				return err
@@ -278,10 +278,10 @@ func AddAllInputScripts(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []bt
 // the input value in the sighash.
 func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 	inputValue int64, chainParams *chaincfg.Params, secrets SecretsSource,
-	tx *wire.MsgTx, hashCache *txscript2.TxSigHashes, idx int) error {
+	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int) error {
 
 	// First obtain the key pair associated with this p2wkh address.
-	_, addrs, _, err := txscript2.ExtractPkScriptAddrs(pkScript,
+	_, addrs, _, err := txscript.ExtractPkScriptAddrs(pkScript,
 		chainParams)
 	if err != nil {
 		return err
@@ -312,13 +312,13 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 	// With the concrete address type, we can now generate the
 	// corresponding witness program to be used to generate a valid witness
 	// which will allow us to spend this output.
-	witnessProgram, err := txscript2.PayToAddrScript(p2wkhAddr)
+	witnessProgram, err := txscript.PayToAddrScript(p2wkhAddr)
 	if err != nil {
 		return err
 	}
 
-	witnessScript, err := txscript2.WitnessSignature(tx, hashCache, idx,
-		inputValue, witnessProgram, txscript2.SigHashAll, secrets, pk, compressed)
+	witnessScript, err := txscript.WitnessSignature(tx, hashCache, idx,
+		inputValue, witnessProgram, txscript.SigHashAll, secrets, pk, compressed)
 	if err != nil {
 		return err
 	}
@@ -335,13 +335,13 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 // the input value in the sighash.
 func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 	inputValue int64, chainParams *chaincfg.Params, secrets SecretsSource,
-	tx *wire.MsgTx, hashCache *txscript2.TxSigHashes, idx int) error {
+	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int) error {
 
 	// First obtain the key pair associated with this p2tr address. If the
 	// pkScript is incorrect or derived from a different internal key or
 	// with a script root, we simply won't find a corresponding private key
 	// here.
-	_, addrs, _, err := txscript2.ExtractPkScriptAddrs(pkScript, chainParams)
+	_, addrs, _, err := txscript.ExtractPkScriptAddrs(pkScript, chainParams)
 	if err != nil {
 		return err
 	}
@@ -352,9 +352,9 @@ func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 
 	// We can now generate a valid witness which will allow us to spend this
 	// output.
-	witnessScript, err := txscript2.TaprootWitnessSignature(
+	witnessScript, err := txscript.TaprootWitnessSignature(
 		tx, hashCache, idx, inputValue, pkScript,
-		txscript2.SigHashDefault, secrets, pubkey,
+		txscript.SigHashDefault, secrets, pubkey,
 	)
 	if err != nil {
 		return err
@@ -374,10 +374,10 @@ func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 // digest algorithm defined in BIP0143 includes the input value in the sighash.
 func spendNestedWitnessPubKeyHash(txIn *wire.TxIn, pkScript []byte,
 	inputValue int64, chainParams *chaincfg.Params, secrets SecretsSource,
-	tx *wire.MsgTx, hashCache *txscript2.TxSigHashes, idx int) error {
+	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int) error {
 
 	// First we need to obtain the key pair related to this p2sh output.
-	_, addrs, _, err := txscript2.ExtractPkScriptAddrs(pkScript,
+	_, addrs, _, err := txscript.ExtractPkScriptAddrs(pkScript,
 		chainParams)
 	if err != nil {
 		return err
@@ -408,11 +408,11 @@ func spendNestedWitnessPubKeyHash(txIn *wire.TxIn, pkScript []byte,
 		fmt.Println("next step...")
 		return err
 	}
-	witnessProgram, err := txscript2.PayToAddrScript(p2wkhAddr)
+	witnessProgram, err := txscript.PayToAddrScript(p2wkhAddr)
 	if err != nil {
 		return err
 	}
-	bldr := txscript2.NewScriptBuilder()
+	bldr := txscript.NewScriptBuilder()
 	bldr.AddData(witnessProgram)
 	sigScript, err := bldr.Script()
 	if err != nil {
@@ -421,8 +421,8 @@ func spendNestedWitnessPubKeyHash(txIn *wire.TxIn, pkScript []byte,
 	txIn.SignatureScript = sigScript
 	// With the sigScript in place, we'll next generate the proper witness
 	// that'll allow us to spend the p2wkh output.
-	witnessScript, err := txscript2.WitnessSignature(tx, hashCache, idx,
-		inputValue, witnessProgram, txscript2.SigHashAll, secrets, pk, compressed)
+	witnessScript, err := txscript.WitnessSignature(tx, hashCache, idx,
+		inputValue, witnessProgram, txscript.SigHashAll, secrets, pk, compressed)
 	if err != nil {
 		return err
 	}
@@ -443,7 +443,7 @@ func (tx *AuthoredTx) AddAllInputScripts(secrets SecretsSource) error {
 
 // TXPrevOutFetcher creates a txscript.PrevOutFetcher from a given slice of
 // previous pk scripts and input values.
-func TXPrevOutFetcher(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []btcutil.Amount) (*txscript2.MultiPrevOutFetcher, error) {
+func TXPrevOutFetcher(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []btcutil.Amount) (*txscript.MultiPrevOutFetcher, error) {
 
 	if len(tx.TxIn) != len(prevPkScripts) {
 		return nil, errors.New("tx.TxIn and prevPkScripts slices " +
@@ -454,7 +454,7 @@ func TXPrevOutFetcher(tx *wire.MsgTx, prevPkScripts [][]byte, inputValues []btcu
 			"must have equal length")
 	}
 
-	fetcher := txscript2.NewMultiPrevOutFetcher(nil)
+	fetcher := txscript.NewMultiPrevOutFetcher(nil)
 	for idx, txin := range tx.TxIn {
 		fetcher.AddPrevOut(txin.PreviousOutPoint, &wire.TxOut{
 			Value:    int64(inputValues[idx]),

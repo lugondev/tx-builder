@@ -1,12 +1,10 @@
 package bitcoin
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/lugondev/tx-builder/pkg/xcrypto"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -41,68 +39,6 @@ func Sign(dataHash []byte, typeSign string) ([]byte, error) {
 	signature := data["signature"].(string)
 
 	return common.FromHex(signature), nil
-}
-
-func MpcSign(dataHash []byte) ([]byte, error) {
-	// Party 1.
-	p1, _ := new(big.Int).SetString("15bafcb56279dbfd985d4d17cdaf9bbfc6701b628f9fb00d6d1e0d2cb503ede3", 16)
-	prv1 := xcrypto.PrvKeyFromBytes(p1.Bytes())
-	pub1 := prv1.PubKey()
-	party1 := xcrypto.NewEcdsaParty(prv1)
-	defer party1.Close()
-
-	// Party 2.
-	p2, _ := new(big.Int).SetString("76818c328b8aa1e8f17bd599016fef8134b7d5ec315e0b6373953da7e8b5c0c9", 16)
-	prv2 := xcrypto.PrvKeyFromBytes(p2.Bytes())
-	pub2 := prv2.PubKey()
-	party2 := xcrypto.NewEcdsaParty(prv2)
-	defer party2.Close()
-
-	// Phase 1.
-	sharepub1 := party1.Phase1(pub2)
-	sharepub2 := party2.Phase1(pub1)
-	if bytes.Compare(sharepub1.Serialize(), sharepub2.Serialize()) != 0 {
-		return nil, fmt.Errorf("sharepub1 != sharepub2")
-	}
-
-	// Phase 2.
-	encpk1, encpub1, scalarR1 := party1.Phase2(dataHash)
-	encpk2, encpub2, scalarR2 := party2.Phase2(dataHash)
-
-	// Phase 3.
-	shareR1 := party1.Phase3(scalarR2)
-	shareR2 := party2.Phase3(scalarR1)
-	if bytes.Compare(shareR1.X.Bytes(), shareR2.X.Bytes()) != 0 || bytes.Compare(shareR1.Y.Bytes(), shareR2.Y.Bytes()) != 0 {
-		return nil, fmt.Errorf("shareR1 != shareR2")
-	}
-
-	// Phase 4.
-	sig1, err := party1.Phase4(encpk2, encpub2, shareR1)
-	if err != nil {
-		return nil, err
-	}
-	sig2, err := party2.Phase4(encpk1, encpub1, shareR2)
-	if err != nil {
-		return nil, err
-	}
-
-	// Phase 5.
-	fs1, err := party1.Phase5(shareR1, sig2)
-	if err != nil {
-		return nil, err
-	}
-	fs2, err := party2.Phase5(shareR2, sig1)
-	if err != nil {
-		return nil, err
-	}
-	if bytes.Compare(fs1, fs2) != 0 {
-		return nil, fmt.Errorf("fs1 != fs2")
-	}
-
-	// Verify.
-	err = xcrypto.EcdsaVerify(sharepub1, dataHash, fs1)
-
-	return fs1, err
 }
 
 func MpcSchnorrSign(dataHash []byte) ([]byte, error) {
@@ -169,10 +105,6 @@ func MpcSchnorrSign(dataHash []byte) ([]byte, error) {
 	//
 	//return fs1, err
 
-	p1, _ := new(big.Int).SetString("15bafcb56279dbfd985d4d17cdaf9bbfc6701b628f9fb00d6d1e0d2cb503ede3", 16)
-	prv1 := xcrypto.PrvKeyFromBytes(p1.Bytes())
-
-	pub1 := prv1.PubKey()
-	fmt.Printf("pub: %x\n", pub1.Serialize())
-	return xcrypto.SchnorrSign(prv1, dataHash)
+	_, _ = new(big.Int).SetString("eea6db960d8537f33c922aa13ff3442f2cfa1e97a01023b2448b3af759c6833d", 16)
+	return nil, nil
 }

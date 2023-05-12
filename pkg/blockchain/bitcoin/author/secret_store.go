@@ -4,9 +4,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/btcec/v2"
+	ecdsa2 "github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin"
 	"github.com/lugondev/tx-builder/pkg/blockchain/bitcoin/txscript"
 )
@@ -44,24 +47,33 @@ func (m MemorySecretStore) GetPubkey(address btcutil.Address) ([]byte, bool, err
 }
 
 func (m MemorySecretStore) Sign(pubkey []byte, data []byte) ([]byte, error) {
-	//privKey, found := m.pubkeyMap[hexutil.Encode(pubkey)]
-	//if !found {
-	//	return nil, fmt.Errorf("pubkey not found: %s", hexutil.Encode(pubkey))
-	//}
-	//sig1 := ecdsa.Sign(privKey, data)
-	sig, err := bitcoin.MpcSign(data)
-	if err != nil {
-		return nil, err
+	privKey, found := m.addressMap[hexutil.Encode(pubkey)]
+	if !found {
+		return nil, fmt.Errorf("pubkey not found: %s", hexutil.Encode(pubkey))
 	}
-	//sig := sig1.Serialize()
-	fmt.Println("len sig", len(sig))
-	fmt.Println("hex sig", hex.EncodeToString(sig))
-	return sig, nil
+	sig := ecdsa2.Sign(privKey, data)
+	//sig, err := bitcoin.MpcSign(data)
+	//if err != nil {
+	//	return nil, err
+	//}
+	////sig := sig1.Serialize()
+	//fmt.Println("len sig", len(sig))
+	//fmt.Println("hex sig", hex.EncodeToString(sig))
+	return sig.Serialize(), nil
 }
 
 func (m MemorySecretStore) SignTaproot(pubkey []byte, data []byte) (*schnorr.Signature, error) {
 	fmt.Println("sign taproot", hex.EncodeToString(data))
-	sig, err := bitcoin.MpcSchnorrSign(data)
+	fmt.Println("sign taproot pubkey", hexutil.Encode(pubkey))
+	privKey, found := m.addressMap[hexutil.Encode(pubkey)]
+	if !found {
+		return nil, fmt.Errorf("pubkey not found: %s", hexutil.Encode(pubkey))
+	}
+	ecdsaPrivKey, err := crypto.HexToECDSA(hex.EncodeToString(privKey.Serialize()))
+	if err != nil {
+		return nil, err
+	}
+	sig, err := bitcoin.SignTaprootSignature(data, ecdsaPrivKey)
 	if err != nil {
 		return nil, err
 	}
